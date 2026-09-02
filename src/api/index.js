@@ -40,9 +40,12 @@ export const getUserOrders  = async (params) => {
 export const getOderByConfirm = async (query) => {
     return await get('/orders/get_order_by_confirm',query);
 }
-
-export const getAllRooms = async (query) => {
-    return await get('/rooms');
+//withdrawals
+export const getWithdrawals = async (query) => {
+    return await get('/withdrawals/get-withdrawals',query);
 }
-
+//appeals
+export const getAppeals  = async (query) => {
+    return await get('/appeals/get-appeals',query);
+}
 export const api =()=>{}

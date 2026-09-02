@@ -31,9 +31,9 @@
 <!--        </select>-->
 <!--      </div>-->
     </div>
-
+<LoadingSpinner v-if="loading"/>
     <!-- Data Table -->
-    <div class="table-container">
+    <div class="table-container" v-if="!loading">
       <DataTable :columns="columns" :data="filteredOrders" v-model:page="currentPage" :limit :total="totalItems" @page-change="fetchOrders" @update:page="val => currentPage = val" />
     </div>
   </div>
@@ -44,6 +44,9 @@ import {computed, onMounted, ref} from 'vue'
 import DataTable from "@/components/DataTable.vue";
 import {getOderByConfirm, getUserOrders} from "@/api/index.js";
 import {formatLocalTime} from "@/utils/formatDate.js";
+import LoadingSpinner from "@/components/LoadingSpinner.vue";
+import {useToast} from "@/composables/useToast.js";
+const {showToast} = useToast();
 // --- State ---
 const searchQuery = ref('')
 const selectedStatus = ref('All')
@@ -51,6 +54,7 @@ const selectedStatus = ref('All')
 const currentPage = ref(1)
 const limit = 10
 const totalItems = ref(0)
+const loading = ref(false)
 
 
 // Table columns
@@ -101,13 +105,17 @@ const fetchOrders = async () => {
     page: currentPage.value,
     limit,
   })
+  loading.value = true
   try {
     const res = await getUserOrders(params)
+    loading.value = false
     data.value = res.data
     currentPage.value = res.pagination.currentPage
     totalItems.value = res.pagination.totalItems
   } catch (error) {
     console.error("Error fetching user orders:", error)
+    loading.value = false
+    showToast('获取订单失败，请重试','error')
   }
 }
 const handleSearchOrder=async ()=>{

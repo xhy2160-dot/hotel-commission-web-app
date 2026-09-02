@@ -3,7 +3,7 @@
     <div class="home-nav__header">
       <div>
         <p class="home-nav__eyebrow">飞筝</p>
-        <h1 class="home-nav__title">早上好{{ userName ? `, ${userName}` : '' }}.</h1>
+        <h1 class="home-nav__title">{{greeting}}{{ userName ? `, ${userName}` : '' }}.</h1>
         <p class="home-nav__subtitle">欢迎登录小程序后台系统</p>
       </div>
       <div class="home-nav__date">
@@ -30,6 +30,18 @@ import {getRandomHexColor} from "@/utils/color.js";
 
 const authStore = useAuthStore();
 const userName = authStore.user?.nickname
+
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+
+  if (hour >= 5 && hour < 12) {
+    return '早上好'
+  } else if (hour >= 12 && hour < 18) {
+    return '下午好'
+  } else {
+    return '晚上好'
+  }
+})
 
 // ── Icons (inline SVG components) ────────────────────────────
 const IconCalendar = {
@@ -88,11 +100,11 @@ const cards = [
     ]
   },
   {
-    to: '/zelle-withdrawals',
+    to: '/withdrawals',
     icon: IconChart,
-    label: 'Zelle',
+    label: 'Zelle, WeChat',
     title: '出款',
-    description: '手动办理Zelle出款',
+    description: '办理查询Zelle，微信出款',
     accent: getRandomHexColor(),
     stats: [
       { value: '94%', label: 'uptime' },

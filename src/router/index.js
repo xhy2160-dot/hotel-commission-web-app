@@ -25,9 +25,9 @@ const routes = [
         meta: { requiresAuth: true } // Protected route
     },
     {
-        path: '/zelle-withdrawals',
+        path: '/withdrawals',
         name: 'Zelle出款',
-        component: () => import('@/views/ZelleWithdrawals.vue'),// Lazy loading
+        component: () => import('@/views/Withdrawals.vue'),// Lazy loading
         meta: { requiresAuth: true }
     },
     {
@@ -40,6 +40,12 @@ const routes = [
         path: '/manual-orders',
         name: 'manual-orders',
         component: () => import('@/views/ManualOrders.vue'),
+        meta: { requiresAuth: true } // Protected route
+    },
+    {
+        path: '/user-appeals',
+        name: 'user-appeals',
+        component: () => import('@/views/Appeals.vue'),
         meta: { requiresAuth: true } // Protected route
     },
     {
