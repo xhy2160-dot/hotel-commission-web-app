@@ -61,7 +61,7 @@ function patchModel() {
     const file = path.join(root, 'models', 'site2userorder.js');
     edit(file, (text) => {
         if (!text.includes('rebate_rate')) {
-            const anchor = '  }, {\n    sequelize,';
+            const anchor = '    }\n  }, {\n    sequelize,';
             const fields = [
                 '    rebate_rate: DataTypes.DECIMAL(10, 4),',
                 '    commission_cny: DataTypes.DECIMAL(12, 2),',
@@ -69,7 +69,7 @@ function patchModel() {
                 '    rebate_calculated_at: DataTypes.DATE'
             ].join('\n');
             if (!text.includes(anchor)) throw new Error('order model anchor not found');
-            text = text.replace(anchor, fields + '\n' + anchor);
+            text = text.replace(anchor, '    },\n' + fields + '\n  }, {\n    sequelize,');
         }
         if (!text.includes('defaultScope')) {
             text = text.replace(
