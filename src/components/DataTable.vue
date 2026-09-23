@@ -13,6 +13,7 @@
               <span>{{ col.label }}</span>
             </div>
           </th>
+          <th v-if="props.enableAction"></th>
         </tr>
         </thead>
         <tbody>
@@ -28,6 +29,7 @@
               {{ row[col.key] ?? '-' }}
             </slot>
           </td>
+          <td v-if="props.enableAction"><button class="page-btn" @click="emit('action_btn_click',row)" >办理</button></td>
         </tr>
         </tbody>
       </table>
@@ -82,9 +84,10 @@ const props = defineProps({
     type: Number,
     default: 0
   },
-  page: { type: Number, default: 1 }
+  page: { type: Number, default: 1 },
+  enableAction:{type:Boolean, default: false},
 })
-const emit = defineEmits(['pageChange','update:page'])
+const emit = defineEmits(['pageChange','update:page','action_btn_click'])
 
 // --- Normalize Columns ---
 const normalizedColumns = computed(() => {
@@ -103,8 +106,6 @@ const totalPages = computed(() => {
   if (!props.limit || props.limit <= 0) return 1
   return Math.ceil(props.total / props.limit) || 1
 })
-
-console.log(props.data)
 
 const handlePageClick = (direction) => {
   if (direction === 'previous' && props.page  > 1) {

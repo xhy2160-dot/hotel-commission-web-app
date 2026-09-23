@@ -1,11 +1,11 @@
 import axios from 'axios'
 
 const baseURL = 'https://miniapp2.flyingkite.site/webapp'
+// const baseURL = '/webapp'
 
 // 1. Create Axios Instance (Removed fixed Content-Type)
 const http = axios.create({
     baseURL,
-    timeout: 10000,
     withCredentials: true // Automatically send cookies across requests
 })
 

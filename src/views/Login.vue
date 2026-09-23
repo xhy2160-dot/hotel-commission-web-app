@@ -148,13 +148,12 @@ const validateForm = (): boolean => {
     validationErrors.email = '请输入有效的邮箱地址'
     isValid = false
   }
-
   // Password validation
   if (!form.password) {
-    validationErrors.password = 'Password is required'
+    validationErrors.password = '请填写密码'
     isValid = false
   } else if (form.password.length < 6) {
-    validationErrors.password = 'Password must be at least 6 characters'
+    validationErrors.password = '密码最少6位'
     isValid = false
   }
 

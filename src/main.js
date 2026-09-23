@@ -12,7 +12,7 @@ app.use(createPinia());
 app.use(router);
 
 const authStore = useAuthStore();
-
+app.config.globalProperties.$imgBaseUrl = 'https://miniapp2.flyingkite.site/static/images/'
 // 🚀 Boot Checklist: Wait for the API check before attaching the app to the DOM
 authStore.checkAuth().then(() => {
     app.mount('#app');

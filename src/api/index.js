@@ -36,13 +36,21 @@ export const postManualOrder=async (formData) => {
 export const getUserOrders  = async (params) => {
     return await get('/orders/get-orders', params);
 }
-
 export const getOderByConfirm = async (query) => {
-    return await get('/orders/get_order_by_confirm',query);
+    return await get('/orders/get-order-by-confirm',query);
+}
+export const getScrapperOrders = async (query) => {
+    return await get('/orders/get-scraper-orders',query);
+}
+export const searchScraperOrders= async (query) => {
+    return await get('/orders/search-scraper-orders',query);
 }
 //withdrawals
 export const getWithdrawals = async (query) => {
     return await get('/withdrawals/get-withdrawals',query);
+}
+export const updateWithdrawalStatus = async (data) => {
+    return await post('/withdrawals/update-withdrawal-status',data);
 }
 //appeals
 export const getAppeals  = async (query) => {

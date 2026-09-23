@@ -48,14 +48,17 @@
     </div>
 
 <!--     Data Table-->
+    <WithdrawPopover :isOpen="isPopoverOpen" :data="currentTransaction" @close="isPopoverOpen = false" @save="fetchWithdrawals()" />
     <LoadingSpinner v-if="loading" />
     <div v-if="!loading" class="table-container">
       <DataTable
           :columns="activeColumns"
-          :data="data"
+          :data="filteredData"
           v-model:page="currentPage"
           :limit="limit"
           :total="totalItems"
+          :enableAction
+          @action_btn_click="handleActionClick"
       />
     </div>
   </div>
@@ -64,13 +67,15 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import DataTable from "@/components/DataTable.vue"
-import { formatLocalTime } from "@/utils/formatDate.js"
+import { formatLocalTime, formatLocalISO } from "@/utils/formatDate.js"
 import {getWithdrawals} from "@/api/index.js";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
-import {useToast} from "@/composables/useToast.js";
 
-const showToast = useToast();
+import WithdrawPopover from "@/components/WithdrawPopover.vue";
+import { useToast } from '@/composables/useToast';
+const { showToast } = useToast();
 const loading = ref(false);
+
 
 // --- Active Tab State ---
 const activeTab = ref('zelle') // 'zelle' or 'wechat'
@@ -83,37 +88,67 @@ const limit = 10
 const totalItems = ref(0)
 const data = ref([])
 
+//popover
+const isPopoverOpen = ref(false);
+const currentTransaction = ref({})
+
 // Status mapping
-const statusMap = {
-  "0": "处理中",
-  "1": "已转账",
-  "2": "提现失败",
-  "3": "已关闭"
+const wStatusMap = {
+  "-1":"失败",
+  "0": "已提交",
+  "1": "出款中",
+  "2": "已出款",
+  "3": "等待用户确认"
 }
 
+const zStatusMap={
+  "0": "待审核",
+  "1": "审核通过",
+  "2": "审核拒绝",
+  "3": "打款中",
+  "4": "打款成功",
+  "5": "打款失败"
+}
+const statusMap = ref(zStatusMap)
 // Columns dynamically change based on active tab
 const zelleColumns = ref([
-  { key: "id", label: "ID" },
+  { key: "withdraw_no", label: "ID" },
   { key: "user_id", label: "用户ID" },
-  { key: "zelle_email", label: "Zelle 账号/邮箱" },
-  { key: "amount", label: "提现金额 ($)" },
+  { key: "zelle_name", label: "姓名" },
+  { key: "zelle_phone", label: "Zelle 账号" },
+  { key: "amount", label: "提现金额 (¥)" },
   { key: "status", label: "状态" },
-  { key: "createdAt", label: "申请时间" }
+  { key: "pay_remark", label: "备注" },
+  { key: "created_at", label: "申请时间" },
 ])
 
 const wechatColumns = ref([
-  { key: "id", label: "ID" },
+  { key: "out_bill_no", label: "ID" },
   { key: "user_id", label: "用户ID" },
-  { key: "wechat_openid", label: "微信OpenID" },
-  { key: "amount_rmb", label: "提现金额 (¥)" },
+  { key: "real_name", label: "姓名" },
+  { key: "amount", label: "提现金额 (¥)" },
   { key: "status", label: "状态" },
-  { key: "createdAt", label: "申请时间" }
+  { key: "created_at", label: "申请时间" }
 ])
 
 const activeColumns = computed(() => {
   return activeTab.value === 'zelle' ? zelleColumns.value : wechatColumns.value
 })
 
+const enableAction = computed(() => {
+  return activeTab.value === 'zelle'
+})
+
+const filteredData = computed(() => {
+  if(!activeTab.value) return []
+  return data.value.map((item) => {
+    return {
+      ...item,
+      created_at: activeTab.value === 'zelle'? formatLocalISO(item.create_time):formatLocalTime(new Date(item.created_at)),
+      status: activeTab.value === 'zelle'? zStatusMap[item.status]:wStatusMap[item.status],
+    }
+  })
+})
 // Tab Switch Handler
 const handleTabChange = (tab) => {
   if (activeTab.value === tab) return
@@ -136,7 +171,7 @@ loading.value = true
     const res = await getWithdrawals(params)
  loading.value = false
     data.value = res.data
-    totalItems.value = res.pagination.totalItems
+    // totalItems.value = res.pagination.totalItems
   } catch (error) {
     loading.value = false
     console.error("Failed to fetch withdrawals:", error)
@@ -148,6 +183,10 @@ loading.value = true
 // watch([currentPage, selectedStatus], () => {
 //   fetchWithdrawals()
 // })
+const handleActionClick =(item)=>{
+  currentTransaction.value = item
+  isPopoverOpen.value = true
+}
 
 onMounted(() => {
   fetchWithdrawals()

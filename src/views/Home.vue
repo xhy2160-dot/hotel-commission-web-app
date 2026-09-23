@@ -26,7 +26,7 @@
 import { computed } from 'vue'
 import NavCard from "@/components/NavCard.vue";
 import { useAuthStore } from "@/stores/auth.js";
-import {getRandomHexColor} from "@/utils/color.js";
+import {oneColor} from "@/utils/color.js";
 
 const authStore = useAuthStore();
 const userName = authStore.user?.nickname
@@ -90,10 +90,22 @@ const cards = [
   {
     to: '/user-orders',
     icon: IconChart,
-    label: '用户酒店订单',
+    label: '订单',
     title: '酒店订单',
-    description: '订单查询',
-    accent: getRandomHexColor(),
+    description: '用户提交订单查询',
+    accent: '#2667ff',
+    stats: [
+      { value: '94%', label: 'uptime' },
+      { value: '↑ 12%', label: 'vs last mo.' },
+    ]
+  },
+  {
+    to: '/scrapper-orders',
+    icon: IconChart,
+    label: '订单',
+    title: '爬虫订单',
+    description: '爬虫订单查询，操作',
+    accent: '#2667ff',
     stats: [
       { value: '94%', label: 'uptime' },
       { value: '↑ 12%', label: 'vs last mo.' },
@@ -105,7 +117,7 @@ const cards = [
     label: 'Zelle, WeChat',
     title: '出款',
     description: '办理查询Zelle，微信出款',
-    accent: getRandomHexColor(),
+    accent: '#2667ff',
     stats: [
       { value: '94%', label: 'uptime' },
       { value: '↑ 12%', label: 'vs last mo.' },
@@ -117,7 +129,7 @@ const cards = [
     label: '申诉',
     title: '申诉',
     description: '申诉相关查询操作',
-    accent: getRandomHexColor(),
+    accent: '#2667ff',
     stats: [
       { value: '94%', label: 'uptime' },
       { value: '↑ 12%', label: 'vs last mo.' },
@@ -129,7 +141,7 @@ const cards = [
     label: '公众号',
     title: '公众号关联',
     description: '添加公众号和缩略图',
-    accent: getRandomHexColor(),
+    accent: '#2667ff',
     stats: [
       { value: '3', label: 'today' },
       { value: '18', label: 'this week' },
@@ -141,7 +153,7 @@ const cards = [
     label: '出款',
     title: '手动返现订单号提交',
     description: '提交已手动返现订单号，防止客户再次提交',
-    accent: getRandomHexColor(),
+    accent: '#2667ff',
     // tag: 'New',
     stats: [
       { value: '7', label: 'open' },
@@ -154,7 +166,7 @@ const cards = [
     label: '员工',
     title: '员工登陆管理',
     description: '添加编辑员工登录账号',
-    accent: getRandomHexColor(),
+    accent: '#2667ff',
     stats: [
       { value: '24', label: 'members' },
       { value: '19', label: 'active' },

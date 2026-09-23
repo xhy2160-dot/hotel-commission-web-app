@@ -25,6 +25,12 @@ const routes = [
         meta: { requiresAuth: true } // Protected route
     },
     {
+        path: '/scrapper-orders',
+        name: 'scrapper-orders',
+        component: () => import('@/views/ScrapperOrders.vue'),
+        meta: { requiresAuth: true } // Protected route
+    },
+    {
         path: '/withdrawals',
         name: 'Zelle出款',
         component: () => import('@/views/Withdrawals.vue'),// Lazy loading
