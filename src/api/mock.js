@@ -281,6 +281,20 @@ appeals.push({
   staff: '',
 })
 
+appeals.push({
+  id: 12,
+  user_id: 12,
+  hotel_order_id: 200,
+  confirmation_num: '9900112200',
+  amount: '1.12',
+  status: 2,
+  content: '金额与预期不符',
+  reply_content: '核对后与佣金明细一致，维持原金额',
+  create_time: yesterdayStamp.text,
+  update_time: yesterdayStamp.text,
+  staff: '客服小周',
+})
+
 const staffList = [
   { id: 1, nickname: '管理员', email: 'admin@flyingkite.site', phone: '16800000000', role: 'Manager', status: 1 },
   { id: 2, nickname: '客服小周', email: 'zhou@flyingkite.site', phone: '16800000002', role: 'Staff', status: 1 },
@@ -492,6 +506,20 @@ export const getBusinessStats = async (query = {}) => {
 export const updateWithdrawalStatus = async () => ({ data: true })
 
 export const getAppeals = async () => ({ data: appeals })
+
+export const updateAppealStatus = async (payload) => {
+  const appeal = appeals.find((item) => Number(item.id) === Number(payload.id))
+  if (appeal) {
+    const nextStatus = payload.status === 'approve' ? 1 : payload.status === 'reject' ? 2 : Number(payload.status)
+    appeal.status = nextStatus
+    appeal.reply_content = payload.reply_content || payload.remark || ''
+    appeal.staff = payload.staff || '管理员'
+    const now = new Date()
+    const pad = (num) => String(num).padStart(2, '0')
+    appeal.update_time = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+  }
+  return { data: true }
+}
 
 export const getAllStaff = async () => ({ staffList })
 

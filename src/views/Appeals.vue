@@ -1,6 +1,5 @@
 <template>
   <div class="appeal-container">
-    <!-- 1. Search Section -->
     <div class="search-box">
       <input
           v-model="searchKeyword"
@@ -14,7 +13,6 @@
       <button v-if="searchKeyword" class="btn btn-secondary" @click="handleReset">Reset</button>
     </div>
 
-    <!-- 2. Status Filter Tabs -->
     <div class="tab-bar">
       <div
           v-for="(tab, index) in tabList"
@@ -27,9 +25,46 @@
       </div>
     </div>
 
-    <!-- 3. Table Component -->
-    <div class="table-wrapper">
-      <DataTable :columns :data="appealList" />
+    <AppealPopover
+        :isOpen="isPopoverOpen"
+        :data="currentAppeal"
+        @close="isPopoverOpen = false"
+        @save="fetchAppeals"
+    />
+
+    <LoadingSpinner v-if="loading" />
+    <div v-else class="table-wrapper">
+      <DataTable
+          :columns="columns"
+          :data="appealList"
+          v-model:page="currentPage"
+          :limit="limit"
+          :total="appealList.length"
+          enable-action
+          @action_btn_click="handleActionClick"
+      >
+        <template #[`cell(user_id)`]="{ row }">
+          <router-link class="table-link" :to="`/users/${row.user_id}`">{{ row.user_id }}</router-link>
+        </template>
+        <template #[`cell(confirmation_num)`]="{ row }">
+          <router-link
+              v-if="row.hotel_order_id"
+              class="table-link"
+              :to="`/user-orders/${row.hotel_order_id}`"
+          >
+            {{ row.confirmation_num || row.hotel_order_id }}
+          </router-link>
+          <span v-else>{{ row.confirmation_num || '-' }}</span>
+        </template>
+        <template #[`cell(amount)`]="{ value }">
+          {{ value === '-' || value === '' || value == null ? '-' : `¥${value}` }}
+        </template>
+        <template #[`cell(status)`]="{ row }">
+          <span class="status-badge" :class="getStatusClass(row.status)">
+            {{ statusLabel[row.status] || row.status }}
+          </span>
+        </template>
+      </DataTable>
     </div>
   </div>
 </template>
@@ -38,29 +73,51 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DataTable from '@/components/DataTable.vue'
-import {getAppeals} from "@/api/index.js";
-import { inDayRange } from '@/utils/range.js'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import AppealPopover from '@/components/AppealPopover.vue'
+import { getAppeals } from '@/api/index.js'
+import { inDayRange, parseTime } from '@/utils/range.js'
+import { formatLocalISO, formatLocalTime } from '@/utils/formatDate.js'
 import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
+import { useToast } from '@/composables/useToast.js'
 
 const route = useRoute()
+const { showToast } = useToast()
 
 const searchKeyword = ref('')
 const currentTab = ref(0)
 const loading = ref(false)
+const currentPage = ref(1)
+const limit = 10
+const isPopoverOpen = ref(false)
+const currentAppeal = ref({})
 
-const tabList = ref([
+const tabList = [
   { name: '全部' },
   { name: '待处理' },
   { name: '已通过' },
   { name: '已拒绝' }
-])
+]
 
-const columns =[{key:'id',label:'id'},{key:'user_id',label:'用户id'},{key:'confirmation_num',label:'订单号'},{key:'amount',label:'金额'},{key:'status',label:'状态'},{key:'content',label:'客人描述'},{key:'reply_content',label:'处理回复'},{key:'create_time',label:'创建时间'},{key:'update_time',label:'更新时间'},{key:'staff',label:'员工'},{key:'action',label:'办理'}]
+const columns = [
+  { key: 'id', label: 'ID' },
+  { key: 'user_id', label: '用户ID' },
+  { key: 'confirmation_num', label: '订单号' },
+  { key: 'amount', label: '金额' },
+  { key: 'status', label: '状态' },
+  { key: 'content', label: '客人描述' },
+  { key: 'reply_content', label: '处理回复' },
+  { key: 'create_time', label: '创建时间' },
+  { key: 'update_time', label: '更新时间' },
+  { key: 'staff', label: '员工' }
+]
 
 const appealList = ref([])
 
+const statusLabel = { 0: '待处理', 1: '已通过', 2: '已拒绝' }
+
 const getStatusClass = (status) => {
-  switch (status) {
+  switch (Number(status)) {
     case 0: return 'status-pending'
     case 1: return 'status-success'
     case 2: return 'status-rejected'
@@ -68,60 +125,109 @@ const getStatusClass = (status) => {
   }
 }
 
-const statusLabel = { 0: '待处理', 1: '已通过', 2: '已拒绝' }
+const formatAppealTime = (value) => {
+  if (value === null || value === undefined || value === '') return ''
+  if (typeof value === 'number' || /^\d+$/.test(String(value))) {
+    const num = Number(value)
+    return num > 1e12 ? formatLocalTime(num) : formatLocalISO(num)
+  }
+  const parsed = parseTime(value)
+  return parsed ? formatLocalTime(parsed) : String(value)
+}
+
+const staffName = (item) => {
+  const staff = item.staff
+  if (staff && typeof staff === 'object') return staff.nickname || staff.name || ''
+  return staff || item.staff_name || item.reviewer || item.reviewer_staff_id || ''
+}
+
+const normalizeAppeal = (item) => {
+  const status = Number(item.status)
+  return {
+    ...item,
+    hotel_order_id: item.hotel_order_id || item.order_id || null,
+    confirmation_num: item.confirmation_num || item.confirm_num || item.order_no || '',
+    amount: item.amount ?? item.rebate_amount ?? item.cashback_amount ?? '',
+    content: item.content || item.reason || item.description || '',
+    reply_content: item.reply_content || item.reply || item.remark || '',
+    create_time: formatAppealTime(item.create_time || item.created_at || item.createdAt),
+    update_time: formatAppealTime(item.update_time || item.updated_at || item.updatedAt),
+    staff: staffName(item),
+    status: Number.isFinite(status) ? status : item.status,
+    status_label: statusLabel[status] || item.status
+  }
+}
 
 const fetchAppeals = async () => {
   loading.value = true
   try {
     const res = await getAppeals()
-    let list = res.data || []
+    const raw = res?.data
+    let list = Array.isArray(raw) ? raw : (raw?.list || raw?.rows || [])
     const keyword = searchKeyword.value.trim()
-    if (keyword) list = list.filter((item) => String(item.confirmation_num || '').includes(keyword))
+    if (keyword) {
+      list = list.filter((item) => String(item.confirmation_num || item.confirm_num || item.order_no || '').includes(keyword))
+    }
     if (currentTab.value === 1) list = list.filter((item) => Number(item.status) === 0)
     if (currentTab.value === 2) list = list.filter((item) => Number(item.status) === 1)
     if (currentTab.value === 3) list = list.filter((item) => Number(item.status) === 2)
     if (route.query.from || route.query.to) {
-      list = list.filter((item) => inDayRange(item.create_time, route.query.from, route.query.to))
+      list = list.filter((item) => inDayRange(item.create_time || item.created_at, route.query.from, route.query.to))
     }
-    appealList.value = list.map((item) => ({ ...item, status: statusLabel[item.status] || item.status }))
+    appealList.value = list.map(normalizeAppeal)
   } catch (err) {
     console.error('Failed to fetch appeals:', err)
+    appealList.value = []
+    showToast('获取申诉失败，请重试', 'error')
   } finally {
     loading.value = false
   }
 }
 
 const exportRows = () => {
-  downloadExcel(exportFileName('申诉'), columns.filter((column) => column.key !== 'action'), appealList.value)
+  const rows = appealList.value.map((item) => ({
+    ...item,
+    status: statusLabel[item.status] || item.status
+  }))
+  downloadExcel(exportFileName('申诉'), columns, rows)
 }
 
-const handleSearch = () => fetchAppeals()
+const handleSearch = () => {
+  currentPage.value = 1
+  fetchAppeals()
+}
 
 const handleReset = () => {
   searchKeyword.value = ''
+  currentPage.value = 1
   fetchAppeals()
 }
 
 const handleTabChange = (index) => {
   currentTab.value = index
+  currentPage.value = 1
   fetchAppeals()
 }
 
-const goToDetail = (id) => {
-  // Replace with vue-router navigation (e.g., router.push(`/appeal/${id}`))
-  console.log('Navigate to detail page for ID:', id)
+const handleActionClick = (row) => {
+  currentAppeal.value = row
+  isPopoverOpen.value = true
 }
 
 onMounted(() => {
   if (route.query.pending === '1') currentTab.value = 1
   fetchAppeals()
 })
-watch(() => [route.query.from, route.query.to, route.query.pending], fetchAppeals)
+watch(() => [route.query.from, route.query.to, route.query.pending], () => {
+  if (route.query.pending === '1') currentTab.value = 1
+  currentPage.value = 1
+  fetchAppeals()
+})
 </script>
 
 <style scoped>
 .appeal-container {
-  max-width: 1000px;
+  max-width: 1400px;
   margin: 20px auto;
   padding: 24px;
   background-color: #ffffff;
@@ -130,7 +236,6 @@ watch(() => [route.query.from, route.query.to, route.query.pending], fetchAppeal
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Search Area */
 .search-box {
   display: flex;
   gap: 12px;
@@ -144,21 +249,18 @@ watch(() => [route.query.from, route.query.to, route.query.pending], fetchAppeal
   border-radius: 6px;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s;
 }
 
 .search-input:focus {
   border-color: #409eff;
 }
 
-/* Buttons */
 .btn {
   padding: 8px 16px;
   border-radius: 6px;
   border: none;
   font-size: 14px;
   cursor: pointer;
-  transition: opacity 0.2s;
 }
 
 .btn:hover {
@@ -175,15 +277,6 @@ watch(() => [route.query.from, route.query.to, route.query.pending], fetchAppeal
   color: #606266;
 }
 
-.btn-sm {
-  padding: 4px 10px;
-  font-size: 12px;
-  background-color: #ecf5ff;
-  color: #409eff;
-  border: 1px solid #b3d8ff;
-}
-
-/* Tabs */
 .tab-bar {
   display: flex;
   border-bottom: 2px solid #e4e7ed;
@@ -205,43 +298,21 @@ watch(() => [route.query.from, route.query.to, route.query.pending], fetchAppeal
   font-weight: 600;
 }
 
-/* Table */
 .table-wrapper {
   border: 1px solid #ebeef5;
   border-radius: 6px;
   overflow: hidden;
 }
 
-.appeal-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 14px;
+.table-link {
+  color: #2563eb;
+  text-decoration: none;
 }
 
-.appeal-table th {
-  background-color: #fafafa;
-  color: #303133;
-  padding: 12px 16px;
-  font-weight: 600;
-  border-bottom: 1px solid #ebeef5;
+.table-link:hover {
+  text-decoration: underline;
 }
 
-.appeal-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #ebeef5;
-  color: #606266;
-}
-
-.appeal-table tr:last-child td {
-  border-bottom: none;
-}
-
-.font-mono {
-  font-family: monospace;
-}
-
-/* Status Badges */
 .status-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -262,11 +333,5 @@ watch(() => [route.query.from, route.query.to, route.query.pending], fetchAppeal
 .status-rejected {
   background-color: #fef0f0;
   color: #f56c6c;
-}
-
-.state-cell {
-  text-align: center;
-  padding: 40px !important;
-  color: #909399;
 }
 </style>

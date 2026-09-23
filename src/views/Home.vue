@@ -153,8 +153,8 @@ const cards = [
     to: '/withdrawals',
     icon: IconChart,
     label: 'Zelle, WeChat',
-    title: '出款',
-    description: '办理查询Zelle，微信出款',
+    title: '提现',
+    description: '办理查询Zelle，微信提现',
     accent: '#2667ff',
     stats: [
       { value: '94%', label: 'uptime' },

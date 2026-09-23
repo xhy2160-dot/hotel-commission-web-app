@@ -25,6 +25,7 @@ export const updateWithdrawalStatus = pick(mock.updateWithdrawalStatus, (data) =
 export const getWithdrawalReviewers = pick(mock.getWithdrawalReviewers, () => get('/withdrawals/reviewers'))
 
 export const getAppeals = pick(mock.getAppeals, (query) => get('/appeals/get-appeals', query))
+export const updateAppealStatus = pick(mock.updateAppealStatus, (data) => post('/appeals/update-appeal-status', data))
 
 export const getVipLevels = pick(mock.getVipLevels, () => get('/vip-levels'))
 export const getAdminUsers = pick(mock.getAdminUsers, (params) => get('/users', params))

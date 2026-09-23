@@ -8,20 +8,20 @@
           <th
               v-for="col in normalizedColumns"
               :key="col.key"
-              class="sortable"
-              @click="toggleSort(col.key)"
+              :class="{ sortable: col.sortable !== false }"
+              @click="toggleSort(col)"
           >
             <div class="header-content">
               <span>{{ col.label }}</span>
               <span v-if="sortKey === col.key" class="sort-indicator">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
             </div>
           </th>
-          <th v-if="props.enableAction"></th>
+          <th v-if="props.enableAction">办理</th>
         </tr>
         </thead>
         <tbody>
         <tr v-if="props.data.length === 0">
-          <td :colspan="normalizedColumns.length" class="empty-cell">
+          <td :colspan="normalizedColumns.length + (props.enableAction ? 1 : 0)" class="empty-cell">
             暂无数据
           </td>
         </tr>
@@ -29,7 +29,7 @@
           <td v-for="col in normalizedColumns" :key="col.key">
             <!-- Dynamic Named Slot by column key -->
             <slot :name="`cell(${col.key})`" :row="row" :value="row[col.key]">
-              {{ row[col.key] ?? '-' }}
+              {{ formatCell(row[col.key]) }}
             </slot>
           </td>
           <td v-if="props.enableAction"><button class="page-btn" @click="emit('action_btn_click',row)" >办理</button></td>
@@ -41,7 +41,7 @@
     <!-- Bottom Bar: Pagination -->
     <div v-if="limit > 0" class="pagination-bar">
       <span class="pagination-info">
-        共 {{ total }} 条记录 | 页数 {{ props.page }} / {{ totalPages }}
+        共 {{ effectiveTotal }} 条记录 | 页数 {{ props.page }} / {{ totalPages }}
       </span>
       <div class="pagination-actions">
         <button
@@ -101,6 +101,8 @@ const normalizedColumns = computed(() => {
     return {
       key: col.key,
       label: col.label || col.key,
+      sortable: col.sortable !== false && col.key !== 'action',
+      sortKey: col.sortKey || col.key,
     }
   })
 })
@@ -108,7 +110,44 @@ const normalizedColumns = computed(() => {
 const sortKey = ref('')
 const sortDir = ref('asc')
 
-const toggleSort = (key) => {
+const formatCell = (value) => {
+  if (value === null || value === undefined || value === '') return '-'
+  if (typeof value === 'object') {
+    return value.nickname || value.name || value.label || value.title || '-'
+  }
+  return value
+}
+
+const sortValue = (row, key) => {
+  const value = row?.[key]
+  if (value && typeof value === 'object') {
+    return value.nickname || value.name || value.label || value.title || ''
+  }
+  return value
+}
+
+const compareValues = (left, right) => {
+  if (left === right) return 0
+  if (left === null || left === undefined || left === '') return -1
+  if (right === null || right === undefined || right === '') return 1
+  const leftNum = Number(left)
+  const rightNum = Number(right)
+  const bothNumeric = left !== true && right !== true
+      && String(left).trim() !== ''
+      && String(right).trim() !== ''
+      && Number.isFinite(leftNum)
+      && Number.isFinite(rightNum)
+      && !Number.isNaN(leftNum)
+      && !Number.isNaN(rightNum)
+      && !/^\d{4}-\d{2}-\d{2}/.test(String(left))
+      && !/^\d{4}-\d{2}-\d{2}/.test(String(right))
+  if (bothNumeric) return leftNum - rightNum
+  return String(left).localeCompare(String(right), 'zh', { numeric: true })
+}
+
+const toggleSort = (col) => {
+  if (col.sortable === false) return
+  const key = col.sortKey || col.key
   if (sortKey.value === key) {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   } else {
@@ -117,15 +156,25 @@ const toggleSort = (key) => {
   }
 }
 
-const displayData = computed(() => {
+const serverPaged = computed(() => props.total > props.data.length)
+
+const sortedData = computed(() => {
   if (!sortKey.value) return props.data
   const direction = sortDir.value === 'asc' ? 1 : -1
-  return [...props.data].sort((a, b) => String(a[sortKey.value] ?? '').localeCompare(String(b[sortKey.value] ?? ''), 'zh', { numeric: true }) * direction)
+  return [...props.data].sort((a, b) => compareValues(sortValue(a, sortKey.value), sortValue(b, sortKey.value)) * direction)
 })
+
+const displayData = computed(() => {
+  if (serverPaged.value || !props.limit || props.limit <= 0) return sortedData.value
+  const start = Math.max(0, (props.page - 1) * props.limit)
+  return sortedData.value.slice(start, start + props.limit)
+})
+
+const effectiveTotal = computed(() => (props.total > 0 ? props.total : props.data.length))
 
 const totalPages = computed(() => {
   if (!props.limit || props.limit <= 0) return 1
-  return Math.ceil(props.total / props.limit) || 1
+  return Math.ceil(effectiveTotal.value / props.limit) || 1
 })
 
 const handlePageClick = (direction) => {
