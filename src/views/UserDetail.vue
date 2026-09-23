@@ -11,7 +11,6 @@
           <div><span>用户ID</span><strong>{{ user.id }}</strong></div>
           <div><span>姓名</span><strong>{{ user.legal_name || '-' }}</strong></div>
           <div><span>昵称</span><strong>{{ user.nickname || '-' }}</strong></div>
-          <div><span>手机</span><strong>{{ user.phone || '-' }}</strong></div>
           <div><span>注册时间</span><strong>{{ user.registered_at || '-' }}</strong></div>
           <div><span>当前会员</span><strong>{{ user.vip_name || '-' }}</strong></div>
           <div><span>当前返现比例</span><strong>{{ formatRate(user.rebate_rate) }}</strong></div>
@@ -66,7 +65,7 @@
             <td>{{ order.confirmation_num }}</td>
             <td>{{ formatRate(order.rebate_rate) }}</td>
             <td>¥{{ order.amount }}</td>
-            <td>{{ order.rebate_calculated_at || '-' }}</td>
+            <td>{{ order.calculated_at || '-' }}</td>
           </tr>
           </tbody>
         </table>
@@ -81,7 +80,7 @@
             <td>{{ item.channel === 'zelle' ? 'Zelle' : '微信' }}</td>
             <td>{{ item.withdraw_no || item.out_bill_no }}</td>
             <td>¥{{ item.amount }}</td>
-            <td>{{ item.status }}</td>
+            <td>{{ withdrawStatus(item) }}</td>
             <td><router-link to="/withdrawals">去出款页</router-link></td>
           </tr>
           </tbody>
@@ -126,8 +125,14 @@ const withdrawals = ref([])
 const appeals = ref([])
 const form = reactive({ vip_id: '', status: 'active' })
 
-const statusMap = { 0: '已提交', 1: '已匹配', 2: '已返现', 3: '可申诉', 4: '已提交申诉', 5: '关闭' }
+const statusMap = { 0: '已提交', 1: '可返现', 2: '已返现', 3: '可申诉', 4: '已提交申诉', 5: '关闭' }
 const statusText = (status) => statusMap[status] || status
+const withdrawStatus = (item) => {
+  const zelle = { 0: '待审核', 1: '审核通过', 2: '审核拒绝', 3: '打款中', 4: '打款成功', 5: '打款失败' }
+  const wechat = { '-1': '失败', 0: '已提交', 1: '出款中', 2: '已出款', 3: '等待用户确认' }
+  const map = item.channel === 'zelle' ? zelle : wechat
+  return map[item.status] || item.status
+}
 const formatRate = (rate) => {
   if (rate === null || rate === undefined || rate === '') return '-'
   return `${Math.round(Number(rate) * 1000) / 10}%`

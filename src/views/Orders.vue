@@ -2,7 +2,9 @@
   <div class="orders-page">
     <header class="page-header">
       <h2>返现订单</h2>
+      <button class="search-btn" @click="exportRows">导出</button>
     </header>
+    <p v-if="route.query.cashback === '1'" class="filter-note">当前只显示已匹配（可返现）的用户订单。</p>
 
     <!-- Search Bar & Filters -->
     <div class="filter-toolbar">
@@ -44,13 +46,16 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
+import { useRoute } from 'vue-router'
 import DataTable from "@/components/DataTable.vue";
 import {getOderByConfirm, getUserOrders} from "@/api/index.js";
 import {formatLocalTime} from "@/utils/formatDate.js";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import {useToast} from "@/composables/useToast.js";
+import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
 const {showToast} = useToast();
+const route = useRoute()
 // --- State ---
 const searchQuery = ref('')
 const selectedStatus = ref('All')
@@ -80,7 +85,7 @@ const data = ref([])
 
 const statusMap = {
   "0": "已提交",
-  "1": "已匹配",
+  "1": "可返现",
   "2": "已返现",
   "3": "可申诉",
   "4": "已提交申述",
@@ -110,6 +115,9 @@ const fetchOrders = async () => {
     page: currentPage.value,
     limit,
   })
+  if (route.query.from) params.set('from', route.query.from)
+  if (route.query.to) params.set('to', route.query.to)
+  if (route.query.cashback) params.set('cashback', route.query.cashback)
   loading.value = true
   try {
     const res = await getUserOrders(params)
@@ -127,6 +135,7 @@ const handleSearchOrder=async ()=>{
   if(!searchQuery.value.trim()){
     currentPage.value=1
     await fetchOrders()
+    return
   }
   const res =await getOderByConfirm({confirmation:searchQuery.value})
   data.value = res.data
@@ -134,6 +143,35 @@ const handleSearchOrder=async ()=>{
 onMounted(() => {
   fetchOrders()
 })
+watch(() => [route.query.from, route.query.to, route.query.cashback], () => {
+  currentPage.value = 1
+  fetchOrders()
+})
+
+const exportColumns = [
+  { key: 'order_no', label: '订单号' },
+  { key: 'confirmation_num', label: '确认号' },
+  { key: 'user_id', label: '用户ID' },
+  { key: 'hotel_name_cn', label: '酒店' },
+  { key: 'commission_cny', label: '人民币佣金合计' },
+  { key: 'rebate_rate', label: '当时返现比例' },
+  { key: 'amount', label: '人民币应返' },
+  { key: 'status', label: '状态' },
+  { key: 'submitted_at', label: '提交时间' },
+]
+const exportRows = async () => {
+  const params = new URLSearchParams({ page: 1, limit: 5000 })
+  if (route.query.from) params.set('from', route.query.from)
+  if (route.query.to) params.set('to', route.query.to)
+  if (route.query.cashback) params.set('cashback', route.query.cashback)
+  if (searchQuery.value.trim()) params.set('confirmation', searchQuery.value.trim())
+  const res = await getUserOrders(params)
+  const rows = (res.data || []).map((order) => ({
+    ...order,
+    status: statusMap[order.status] || order.status,
+  }))
+  downloadExcel(exportFileName('订单'), exportColumns, rows)
+}
 </script>
 
 <style scoped>
@@ -145,11 +183,14 @@ onMounted(() => {
   color: #333;
 }
 
+.page-header { display: flex; justify-content: space-between; align-items: center; }
 .page-header h2 {
   margin-top: 0;
   margin-bottom: 20px;
   font-size: 1.5rem;
 }
+.search-btn { padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; }
+.filter-note { color: #6b7280; font-size: 13px; }
 
 /* Toolbar & Filters */
 .filter-toolbar {

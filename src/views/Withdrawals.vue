@@ -2,6 +2,7 @@
   <div class="orders-page">
     <header class="page-header">
       <h2>提现记录</h2>
+      <button class="search-btn" type="button" @click="exportRows">导出</button>
     </header>
 
     <!-- Tab Bar for Switching Withdrawal Methods -->
@@ -66,14 +67,16 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import DataTable from "@/components/DataTable.vue"
 import { formatLocalTime, formatLocalISO } from "@/utils/formatDate.js"
 import {getWithdrawals} from "@/api/index.js";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
-
 import WithdrawPopover from "@/components/WithdrawPopover.vue";
 import { useToast } from '@/composables/useToast';
+import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
 const { showToast } = useToast();
+const route = useRoute()
 const loading = ref(false);
 
 
@@ -130,6 +133,8 @@ const wechatColumns = ref([
   { key: "real_name", label: "姓名" },
   { key: "amount", label: "提现金额 (¥)" },
   { key: "status", label: "状态" },
+  { key: "reviewer_staff_id", label: "审核人" },
+  { key: "paid_at", label: "付款时间" },
   { key: "created_at", label: "申请时间" }
 ])
 
@@ -161,25 +166,30 @@ const filteredData = computed(() => {
 const handleTabChange = (tab) => {
   if (activeTab.value === tab) return
   activeTab.value = tab
-  currentPage.value = 1 // Reset pagination on tab switch
+  statusMap.value = tab === 'zelle' ? zStatusMap : wStatusMap
+  selectedStatus.value = 'All'
+  currentPage.value = 1
   fetchWithdrawals()
 }
 
 // Fetch Data Mock / API call
 const fetchWithdrawals = async () => {
   const params = new URLSearchParams({
-    type: activeTab.value, // Pass 'zelle' or 'wechat' to backend
+    type: activeTab.value,
     page: currentPage.value,
     limit,
     status: selectedStatus.value,
     search: searchQuery.value
   })
+  if (route.query.from) params.set('from', route.query.from)
+  if (route.query.to) params.set('to', route.query.to)
+  if (route.query.pending) params.set('pending', route.query.pending)
 loading.value = true
   try {
     const res = await getWithdrawals(params)
  loading.value = false
     data.value = res.data
-    // totalItems.value = res.pagination.totalItems
+    totalItems.value = res.pagination?.totalItems || res.data?.length || 0
   } catch (error) {
     loading.value = false
     console.error("Failed to fetch withdrawals:", error)
@@ -196,7 +206,13 @@ const handleActionClick =(item)=>{
   isPopoverOpen.value = true
 }
 
+const exportRows = () => {
+  const columns = activeTab.value === 'zelle' ? zelleColumns.value : wechatColumns.value
+  downloadExcel(exportFileName(activeTab.value === 'zelle' ? 'Zelle提现' : '微信提现'), columns, filteredData.value)
+}
+
 onMounted(() => {
+  if (route.query.pending === '1') selectedStatus.value = '0'
   fetchWithdrawals()
 })
 </script>
@@ -209,6 +225,8 @@ onMounted(() => {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #333;
 }
+.page-header { display: flex; justify-content: space-between; align-items: center; }
+.search-btn { padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; }
 
 /* Tab Switcher Styling */
 .tab-bar {

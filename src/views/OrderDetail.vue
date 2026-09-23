@@ -15,23 +15,23 @@
           <div><span>入住</span><strong>{{ order.check_in_date }}</strong></div>
           <div><span>离店</span><strong>{{ order.check_out_date }}</strong></div>
           <div><span>状态</span><strong>{{ statusText(order.status) }}</strong></div>
+          <div><span>订单来源</span><strong>{{ order.source || '-' }}</strong></div>
           <div><span>提交时间</span><strong>{{ order.submitted_at || '-' }}</strong></div>
-          <div><span>当前会员</span><strong>{{ user?.vip_name || '-' }}</strong></div>
+          <div><span>当前会员</span><strong>{{ user?.vip_name || '-' }}（{{ formatRate(user?.rebate_rate) }}）</strong></div>
           <div><span>人民币应返</span><strong>¥{{ order.amount }}</strong></div>
         </div>
       </section>
 
       <section class="panel">
         <h3>返现计算</h3>
-        <p v-if="!order.calc_lines.length" class="hint">
-          这笔订单在开始记录快照之前已经入账，只保留当时写入的返现金额 ¥{{ order.amount }}。不会用今天的会员比例或汇率重算。
+        <p v-if="!order.has_snapshot" class="hint">
+          这笔订单入账时没有留下佣金明细，只保留当时写入的返现金额 ¥{{ order.amount }}。不会用今天的汇率或会员比例重算。
         </p>
         <template v-else>
-          <p>计算时间（北京时间）：{{ order.calculated_at || '-' }}</p>
-          <p>当时返现比例：{{ formatRate(order.rebate_rate) }}。当时渠道佣金合计：¥{{ order.commission_cny }}</p>
+          <p>计算时间：{{ order.calculated_at || '-' }}。当时返现比例：{{ formatRate(order.rebate_rate) }}。</p>
           <table>
             <thead>
-            <tr><th>来源</th><th>佣金原币</th><th>币种</th><th>汇率</th><th>人民币佣金</th></tr>
+            <tr><th>来源</th><th>佣金原币</th><th>币种</th><th>汇率（1人民币兑外币）</th><th>人民币佣金</th></tr>
             </thead>
             <tbody>
             <tr v-for="(line, index) in order.calc_lines" :key="index">
@@ -44,9 +44,9 @@
             </tbody>
           </table>
           <p class="formula">
-            人民币应返 = 各渠道佣金换成人民币后的合计 ¥{{ order.commission_cny }} × 当时返现比例 {{ formatRate(order.rebate_rate) }} = ¥{{ order.amount }}
+            人民币应返 = 人民币佣金合计 ¥{{ order.commission_cny }} × 当时返现比例 {{ formatRate(order.rebate_rate) }} = ¥{{ order.amount }}
           </p>
-          <p class="hint">汇率是入账时「1 人民币可兑换的外币数量」。外币佣金 ÷ 汇率 = 人民币佣金。之后会员等级或汇率变化，不会改写这笔金额。</p>
+          <p class="hint">汇率是入账时 1 人民币可兑换的外币数量。人民币佣金 = 原币金额 ÷ 汇率。之后会员等级或汇率变化，不会改写这笔金额。当前会员等级只显示在上方，不参与这笔计算。</p>
         </template>
       </section>
 
@@ -73,7 +73,7 @@ const loading = ref(false)
 const order = ref(null)
 const user = ref(null)
 const appeal = ref(null)
-const statusMap = { 0: '已提交', 1: '已匹配', 2: '已返现', 3: '可申诉', 4: '已提交申诉', 5: '关闭' }
+const statusMap = { 0: '已提交', 1: '可返现', 2: '已返现', 3: '可申诉', 4: '已提交申诉', 5: '关闭' }
 const statusText = (status) => statusMap[status] || status
 const formatRate = (rate) => {
   if (rate === null || rate === undefined || rate === '') return '-'

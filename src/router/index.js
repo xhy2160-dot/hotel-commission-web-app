@@ -19,6 +19,12 @@ const routes = [
         component: () => import('@/views/Login.vue') // Lazy loading
     },
     {
+        path: '/stats',
+        name: 'stats',
+        component: () => import('@/views/Stats.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
         path: '/user-orders',
         name: 'user-orders',
         component: () => import('@/views/Orders.vue'),

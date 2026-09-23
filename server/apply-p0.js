@@ -1,5 +1,5 @@
 /**
- * Idempotent server patch for the admin P0 work.
+ * Idempotent server patch for the admin P0/P1 work.
  * Run on the Windows host from this file:
  *   node apply-p0.js "C:\\Users\\Administrator\\Server\\Hotel_comission"
  */

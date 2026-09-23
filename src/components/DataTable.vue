@@ -8,9 +8,12 @@
           <th
               v-for="col in normalizedColumns"
               :key="col.key"
+              class="sortable"
+              @click="toggleSort(col.key)"
           >
             <div class="header-content">
               <span>{{ col.label }}</span>
+              <span v-if="sortKey === col.key" class="sort-indicator">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
             </div>
           </th>
           <th v-if="props.enableAction"></th>
@@ -22,7 +25,7 @@
             暂无数据
           </td>
         </tr>
-        <tr v-for="(row, index) in props.data" :key="row.id ?? index">
+        <tr v-for="(row, index) in displayData" :key="row.id ?? index">
           <td v-for="col in normalizedColumns" :key="col.key">
             <!-- Dynamic Named Slot by column key -->
             <slot :name="`cell(${col.key})`" :row="row" :value="row[col.key]">
@@ -61,7 +64,7 @@
 </template>
 
 <script setup>
-import {  computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   data: {
@@ -100,6 +103,24 @@ const normalizedColumns = computed(() => {
       label: col.label || col.key,
     }
   })
+})
+
+const sortKey = ref('')
+const sortDir = ref('asc')
+
+const toggleSort = (key) => {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+const displayData = computed(() => {
+  if (!sortKey.value) return props.data
+  const direction = sortDir.value === 'asc' ? 1 : -1
+  return [...props.data].sort((a, b) => String(a[sortKey.value] ?? '').localeCompare(String(b[sortKey.value] ?? ''), 'zh', { numeric: true }) * direction)
 })
 
 const totalPages = computed(() => {

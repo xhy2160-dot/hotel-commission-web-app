@@ -12,6 +12,27 @@
       </div>
     </div>
 
+    <section class="board">
+      <div class="board__head">
+        <h2>运营看板</h2>
+        <div class="ranges">
+          <button
+              v-for="item in ranges"
+              :key="item.id"
+              type="button"
+              :class="{ active: range === item.id }"
+              @click="range = item.id"
+          >{{ item.label }}</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <router-link v-for="item in metrics" :key="item.label" :to="item.to" class="metric">
+          <span class="metric__value">{{ item.value }}</span>
+          <span class="metric__label">{{ item.label }}</span>
+        </router-link>
+      </div>
+    </section>
+
     <div class="home-nav__grid">
       <NavCard
           v-for="card in cards"
@@ -23,10 +44,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import NavCard from "@/components/NavCard.vue";
 import { useAuthStore } from "@/stores/auth.js";
-import {oneColor} from "@/utils/color.js";
+import { getDashboard } from "@/api/index.js";
+import { rangeBounds } from "@/utils/range.js";
 
 const authStore = useAuthStore();
 const userName = authStore.user?.nickname
@@ -93,6 +115,14 @@ const cards = [
     label: '用户',
     title: '用户管理',
     description: '搜索用户，查看订单、返现、提现和申诉',
+    accent: '#2667ff',
+  },
+  {
+    to: '/stats',
+    icon: IconChart,
+    label: '统计',
+    title: '经营统计',
+    description: '按月看佣金、返现、出款和毛利',
     accent: '#2667ff',
   },
   {
@@ -181,6 +211,44 @@ const cards = [
     ]
   },
 ]
+
+const ranges = [
+  { id: 'today', label: '今日' },
+  { id: 'week', label: '本周' },
+  { id: 'month', label: '本月' },
+]
+const range = ref('today')
+const counts = ref({
+  newUsers: 0,
+  newOrders: 0,
+  cashbackOrders: 0,
+  withdrawalApplies: 0,
+  pendingWithdrawals: 0,
+  pendingAppeals: 0,
+})
+const bounds = computed(() => rangeBounds(range.value))
+const metrics = computed(() => {
+  const query = `from=${bounds.value.from}&to=${bounds.value.to}`
+  return [
+    { label: '新用户', value: counts.value.newUsers, to: `/users?${query}` },
+    { label: '新订单', value: counts.value.newOrders, to: `/user-orders?${query}` },
+    { label: '可返现订单', value: counts.value.cashbackOrders, to: `/user-orders?${query}&cashback=1` },
+    { label: '提现申请', value: counts.value.withdrawalApplies, to: `/withdrawals?${query}` },
+    { label: '待处理提现', value: counts.value.pendingWithdrawals, to: `/withdrawals?${query}&pending=1` },
+    { label: '待处理申诉', value: counts.value.pendingAppeals, to: `/user-appeals?${query}&pending=1` },
+  ]
+})
+
+async function loadDashboard() {
+  try {
+    const res = await getDashboard(bounds.value)
+    counts.value = res.data
+  } catch {
+    // Keep last counts; login cookie may still be settling on localhost.
+  }
+}
+
+watch(range, loadDashboard, { immediate: true })
 
 // ── Date header ───────────────────────────────────────────────
 const today = computed(() => {
@@ -290,4 +358,18 @@ const today = computed(() => {
     font-size: 22px;
   }
 }
+
+.board { margin-bottom: 28px; }
+.board__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.board__head h2 { margin: 0; font-size: 18px; }
+.ranges { display: flex; gap: 8px; }
+.ranges button { border: 1px solid #d1d5db; background: #fff; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.ranges button.active { background: #111827; color: #fff; border-color: #111827; }
+.metrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.metric { display: flex; flex-direction: column; gap: 4px; padding: 14px; background: #fff; border: 1px solid #e5e9ef; border-radius: 10px; text-decoration: none; color: inherit; }
+.metric:hover { border-color: #2563eb; }
+.metric__value { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+.metric__label { color: #6b7280; font-size: 13px; }
+@media (max-width: 1024px) { .metrics { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
 </style>

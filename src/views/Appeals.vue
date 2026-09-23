@@ -10,6 +10,7 @@
           @keyup.enter="handleSearch"
       />
       <button class="btn btn-primary" @click="handleSearch">查询</button>
+      <button class="btn btn-secondary" @click="exportRows">导出</button>
       <button v-if="searchKeyword" class="btn btn-secondary" @click="handleReset">Reset</button>
     </div>
 
@@ -34,19 +35,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import DataTable from '@/components/DataTable.vue'
 import {getAppeals} from "@/api/index.js";
+import { inDayRange } from '@/utils/range.js'
+import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
+
+const route = useRoute()
 
 const searchKeyword = ref('')
 const currentTab = ref(0)
 const loading = ref(false)
 
 const tabList = ref([
-  { name: 'All' },
-  { name: 'Pending' },
-  { name: 'Approved' },
-  { name: 'Rejected' }
+  { name: '全部' },
+  { name: '待处理' },
+  { name: '已通过' },
+  { name: '已拒绝' }
 ])
 
 const columns =[{key:'id',label:'id'},{key:'user_id',label:'用户id'},{key:'confirmation_num',label:'订单号'},{key:'amount',label:'金额'},{key:'status',label:'状态'},{key:'content',label:'客人描述'},{key:'reply_content',label:'处理回复'},{key:'create_time',label:'创建时间'},{key:'update_time',label:'更新时间'},{key:'staff',label:'员工'},{key:'action',label:'办理'}]
@@ -62,17 +68,31 @@ const getStatusClass = (status) => {
   }
 }
 
+const statusLabel = { 0: '待处理', 1: '已通过', 2: '已拒绝' }
+
 const fetchAppeals = async () => {
   loading.value = true
-
   try {
- const res = await getAppeals()
-    appealList.value = res.data
-    console.log(res)
+    const res = await getAppeals()
+    let list = res.data || []
+    const keyword = searchKeyword.value.trim()
+    if (keyword) list = list.filter((item) => String(item.confirmation_num || '').includes(keyword))
+    if (currentTab.value === 1) list = list.filter((item) => Number(item.status) === 0)
+    if (currentTab.value === 2) list = list.filter((item) => Number(item.status) === 1)
+    if (currentTab.value === 3) list = list.filter((item) => Number(item.status) === 2)
+    if (route.query.from || route.query.to) {
+      list = list.filter((item) => inDayRange(item.create_time, route.query.from, route.query.to))
+    }
+    appealList.value = list.map((item) => ({ ...item, status: statusLabel[item.status] || item.status }))
   } catch (err) {
-    loading.value = false
     console.error('Failed to fetch appeals:', err)
+  } finally {
+    loading.value = false
   }
+}
+
+const exportRows = () => {
+  downloadExcel(exportFileName('申诉'), columns.filter((column) => column.key !== 'action'), appealList.value)
 }
 
 const handleSearch = () => fetchAppeals()
@@ -92,7 +112,11 @@ const goToDetail = (id) => {
   console.log('Navigate to detail page for ID:', id)
 }
 
-onMounted(() => fetchAppeals())
+onMounted(() => {
+  if (route.query.pending === '1') currentTab.value = 1
+  fetchAppeals()
+})
+watch(() => [route.query.from, route.query.to, route.query.pending], fetchAppeals)
 </script>
 
 <style scoped>

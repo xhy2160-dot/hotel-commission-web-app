@@ -19,4 +19,25 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    proxy: {
+      '/webapp': {
+        target: 'https://miniapp2.flyingkite.site',
+        changeOrigin: true,
+        secure: true,
+        configure(proxy) {
+          proxy.on('proxyRes', (proxyRes) => {
+            const cookies = proxyRes.headers['set-cookie']
+            if (!cookies) return
+            proxyRes.headers['set-cookie'] = cookies.map((cookie) =>
+              cookie
+                .replace(/;\s*Domain=[^;]+/gi, '')
+                .replace(/;\s*SameSite=None/gi, '; SameSite=Lax')
+                .replace(/;\s*Secure/gi, '')
+            )
+          })
+        },
+      },
+    },
+  },
 })

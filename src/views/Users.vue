@@ -9,11 +9,12 @@
             v-model="keyword"
             type="text"
             class="search-input"
-            placeholder="搜索用户ID、手机号、昵称或姓名"
+            placeholder="搜索用户ID、昵称或姓名"
             @keyup.enter="search"
         />
       </div>
       <button class="search-btn" @click="search">查询</button>
+      <button class="search-btn ghost" @click="exportRows">导出</button>
     </div>
     <LoadingSpinner v-if="loading" />
     <div v-else class="table-container">
@@ -38,11 +39,15 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import DataTable from '@/components/DataTable.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getAdminUsers } from '@/api/index.js'
 import { useToast } from '@/composables/useToast.js'
+import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
+
+const route = useRoute()
 
 const { showToast } = useToast()
 const keyword = ref('')
@@ -56,7 +61,6 @@ const columns = [
   { key: 'id', label: '用户ID' },
   { key: 'legal_name', label: '姓名' },
   { key: 'nickname', label: '昵称' },
-  { key: 'phone', label: '手机' },
   { key: 'registered_at', label: '注册时间' },
   { key: 'vip_name', label: '会员等级' },
   { key: 'rebate_rate', label: '返现比例' },
@@ -74,7 +78,13 @@ const formatRate = (rate) => {
 const load = async () => {
   loading.value = true
   try {
-    const res = await getAdminUsers({ page: page.value, limit, q: keyword.value.trim() })
+    const res = await getAdminUsers({
+      page: page.value,
+      limit,
+      q: keyword.value.trim(),
+      from: route.query.from,
+      to: route.query.to,
+    })
     rows.value = res.data || []
     total.value = res.pagination?.totalItems || 0
   } catch (error) {
@@ -89,7 +99,22 @@ const search = async () => {
   await load()
 }
 
+const exportRows = async () => {
+  const res = await getAdminUsers({
+    page: 1,
+    limit: 5000,
+    q: keyword.value.trim(),
+    from: route.query.from,
+    to: route.query.to,
+  })
+  downloadExcel(exportFileName('用户'), columns, (res.data || []).map((row) => ({
+    ...row,
+    rebate_rate: formatRate(row.rebate_rate),
+  })))
+}
+
 onMounted(load)
+watch(() => [route.query.from, route.query.to], () => { page.value = 1; load() })
 </script>
 
 <style scoped>
@@ -99,6 +124,7 @@ onMounted(load)
 .search-box { flex: 1; }
 .search-input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 6px; }
 .search-btn { padding: 10px 18px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
+.search-btn.ghost { background: #fff; color: #111827; border: 1px solid #d1d5db; }
 .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; }
 .order-link { color: #2563eb; font-weight: 600; text-decoration: none; }
 </style>
