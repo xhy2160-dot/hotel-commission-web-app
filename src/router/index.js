@@ -25,6 +25,24 @@ const routes = [
         meta: { requiresAuth: true } // Protected route
     },
     {
+        path: '/user-orders/:id',
+        name: 'user-order-detail',
+        component: () => import('@/views/OrderDetail.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/users',
+        name: 'users',
+        component: () => import('@/views/Users.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/users/:id',
+        name: 'user-detail',
+        component: () => import('@/views/UserDetail.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
         path: '/scrapper-orders',
         name: 'scrapper-orders',
         component: () => import('@/views/ScrapperOrders.vue'),

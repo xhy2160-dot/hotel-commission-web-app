@@ -88,6 +88,14 @@ const IconSettings = {
 // ── Cards config ──────────────────────────────────────────────
 const cards = [
   {
+    to: '/users',
+    icon: IconUsers,
+    label: '用户',
+    title: '用户管理',
+    description: '搜索用户，查看订单、返现、提现和申诉',
+    accent: '#2667ff',
+  },
+  {
     to: '/user-orders',
     icon: IconChart,
     label: '订单',

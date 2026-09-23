@@ -119,6 +119,8 @@ const zelleColumns = ref([
   { key: "amount", label: "提现金额 (¥)" },
   { key: "status", label: "状态" },
   { key: "pay_remark", label: "备注" },
+  { key: "reviewer_staff_id", label: "审核人" },
+  { key: "paid_at", label: "付款时间" },
   { key: "created_at", label: "申请时间" },
 ])
 
@@ -141,10 +143,16 @@ const enableAction = computed(() => {
 
 const filteredData = computed(() => {
   if(!activeTab.value) return []
-  return data.value.map((item) => {
+  const keyword = searchQuery.value.trim().toLowerCase()
+  return data.value.filter((item) => {
+    if (selectedStatus.value !== 'All' && String(item.status) !== String(selectedStatus.value)) return false
+    if (!keyword) return true
+    return Object.values(item).join(' ').toLowerCase().includes(keyword)
+  }).map((item) => {
     return {
       ...item,
       created_at: activeTab.value === 'zelle'? formatLocalISO(item.create_time):formatLocalTime(new Date(item.created_at)),
+      paid_at: item.paid_at ? formatLocalTime(item.paid_at) : '',
       status: activeTab.value === 'zelle'? zStatusMap[item.status]:wStatusMap[item.status],
     }
   })

@@ -34,7 +34,11 @@
 <LoadingSpinner v-if="loading"/>
     <!-- Data Table -->
     <div class="table-container" v-if="!loading">
-      <DataTable :columns="columns" :data="filteredOrders" v-model:page="currentPage" :limit :total="totalItems" @page-change="fetchOrders" @update:page="val => currentPage = val" />
+      <DataTable :columns="columns" :data="filteredOrders" v-model:page="currentPage" :limit :total="totalItems" @page-change="fetchOrders" @update:page="val => currentPage = val">
+        <template #[`cell(confirmation_num)`]="{ row }">
+          <router-link class="order-link" :to="`/user-orders/${row.id}`">{{ row.confirmation_num }}</router-link>
+        </template>
+      </DataTable>
     </div>
   </div>
 </template>
@@ -218,5 +222,11 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.order-link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
 }
 </style>

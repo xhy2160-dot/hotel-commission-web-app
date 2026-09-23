@@ -56,4 +56,29 @@ export const updateWithdrawalStatus = async (data) => {
 export const getAppeals  = async (query) => {
     return await get('/appeals/get-appeals',query);
 }
+
+export const getVipLevels = async () => {
+    return await get('/vip-levels');
+}
+
+export const getAdminUsers = async (params) => {
+    return await get('/users', params);
+}
+
+export const getAdminUserDetail = async (id) => {
+    return await get('/users/detail', { id });
+}
+
+export const updateAdminUser = async (data) => {
+    return await post('/users/update', data);
+}
+
+export const getOrderDetail = async (id) => {
+    return await get('/orders/detail', { id });
+}
+
+export const getWithdrawalReviewers = async () => {
+    return await get('/withdrawals/reviewers');
+}
+
 export const api =()=>{}
