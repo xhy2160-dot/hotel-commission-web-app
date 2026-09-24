@@ -4,7 +4,7 @@
       <h2>返现订单</h2>
       <button class="search-btn" @click="exportRows">导出</button>
     </header>
-    <p v-if="route.query.cashback === '1'" class="filter-note">当前只显示已匹配（可返现）的用户订单。</p>
+    <p v-if="route.query.cashback === '1'" class="filter-note">当前显示可返现和已返现的用户订单。</p>
 
     <!-- Search Bar & Filters -->
     <div class="filter-toolbar">

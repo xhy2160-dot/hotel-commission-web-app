@@ -391,7 +391,7 @@ export const getUserOrders = async (params) => {
   const limit = Number(query.limit || 10)
   let list = orders
   if (query.cashback === '1') {
-    list = list.filter((order) => Number(order.status) === 1)
+    list = list.filter((order) => [1, 2].includes(Number(order.status)))
     if (query.from || query.to) {
       list = list.filter((order) => inDayRange(order.submitted_at, query.from, query.to))
     }
@@ -443,7 +443,7 @@ export const getDashboard = async (rangeQuery = {}) => {
   const to = rangeQuery.to
   const newUsers = users.filter((user) => inDayRange(user.registered_at, from, to))
   const newOrders = orders.filter((order) => inDayRange(order.submitted_at, from, to))
-  const cashbackOrders = orders.filter((order) => Number(order.status) === 1 && inDayRange(order.submitted_at, from, to))
+  const cashbackOrders = orders.filter((order) => [1, 2].includes(Number(order.status)) && inDayRange(order.submitted_at, from, to))
   const periodWithdrawals = allWithdrawals().filter((item) => inDayRange(item.at, from, to))
   const pendingWithdrawals = periodWithdrawals.filter((item) => Number(item.status) === 0)
   const periodAppeals = appeals.filter((item) => inDayRange(item.create_time, from, to))
