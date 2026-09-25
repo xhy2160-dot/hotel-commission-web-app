@@ -1,4 +1,5 @@
 import { inDayRange } from '@/utils/range.js'
+import { buildPromoMetrics, campaignWindow, formatBeijing, parseBeijing } from '@/utils/promoMetrics.js'
 
 // Preview stand-ins only. Live admin reads site2_app_vip_level.
 
@@ -538,3 +539,109 @@ export const addStaff = async () => ({ data: true })
 export const updateStaffPost = async () => ({ user: staffList[0] })
 
 export const getWithdrawalReviewers = async () => ({ data: staffList })
+
+const promoCampaigns = [
+  {
+    id: 1,
+    platform: '小红书',
+    start_at: '2026-09-16 10:00:00',
+    duration_days: 7,
+    amount: 800,
+    baseline_daily: null,
+    note: '模拟投放，仅本地预览',
+  },
+]
+
+function userFlags(user) {
+  const own = orders.filter((order) => order.user_id === user.id)
+  return {
+    at: parseBeijing(user.registered_at),
+    hasOrder: own.length > 0,
+    hasCashback: own.some((order) => [1, 2].includes(Number(order.status))),
+  }
+}
+
+function countMockUsers(start, end, kind) {
+  return users.map(userFlags).filter((user) => {
+    if (!user.at || user.at < start || user.at >= end) return false
+    if (kind === 'acq') return user.hasOrder
+    if (kind === 'cpa') return user.hasCashback
+    return true
+  }).length
+}
+
+function decoratePromo(row) {
+  const win = campaignWindow(row.start_at, row.duration_days)
+  if (!win) return { ...row, score: 0, score_label: '无效' }
+  const metrics = buildPromoMetrics({
+    durationDays: row.duration_days,
+    amount: row.amount,
+    baselineDailyOverride: row.baseline_daily,
+    preLeads: countMockUsers(win.baselineStart, win.start, 'leads'),
+    preAcq: countMockUsers(win.baselineStart, win.start, 'acq'),
+    preCpa: countMockUsers(win.baselineStart, win.start, 'cpa'),
+    actualLeads: countMockUsers(win.start, win.end, 'leads'),
+    actualAcq: countMockUsers(win.start, win.end, 'acq'),
+    actualCpa: countMockUsers(win.start, win.end, 'cpa'),
+  })
+  return {
+    ...row,
+    end_at: formatBeijing(win.end) + ':00',
+    users_from: row.start_at.slice(0, 10),
+    users_to: new Date(win.end.getTime() - 1000).toISOString().slice(0, 10),
+    ...metrics,
+  }
+}
+
+export const getPromotions = async () => ({ data: promoCampaigns.map(decoratePromo) })
+
+export const previewPromotion = async (query = {}) => ({
+  data: decoratePromo({
+    platform: query.platform || '',
+    start_at: query.start_at,
+    duration_days: query.duration_days,
+    amount: query.amount,
+    baseline_daily: query.baseline_daily === '' ? null : query.baseline_daily,
+    note: '',
+  }),
+})
+
+export const getPromotionDetail = async (id) => {
+  const row = promoCampaigns.find((item) => Number(item.id) === Number(id))
+  if (!row) throw new Error('推广记录不存在')
+  return { data: decoratePromo(row) }
+}
+
+export const createPromotion = async (data) => {
+  const row = {
+    id: Date.now(),
+    platform: data.platform,
+    start_at: String(data.start_at).replace('T', ' '),
+    duration_days: Number(data.duration_days),
+    amount: Number(data.amount),
+    baseline_daily: data.baseline_daily === '' || data.baseline_daily == null ? null : Number(data.baseline_daily),
+    note: data.note || '',
+  }
+  promoCampaigns.unshift(row)
+  return { data: decoratePromo(row) }
+}
+
+export const updatePromotion = async (data) => {
+  const row = promoCampaigns.find((item) => Number(item.id) === Number(data.id))
+  if (!row) throw new Error('推广记录不存在')
+  Object.assign(row, {
+    platform: data.platform,
+    start_at: String(data.start_at).replace('T', ' '),
+    duration_days: Number(data.duration_days),
+    amount: Number(data.amount),
+    baseline_daily: data.baseline_daily === '' || data.baseline_daily == null ? null : Number(data.baseline_daily),
+    note: data.note || '',
+  })
+  return { data: decoratePromo(row) }
+}
+
+export const deletePromotion = async (data) => {
+  const index = promoCampaigns.findIndex((item) => Number(item.id) === Number(data.id))
+  if (index >= 0) promoCampaigns.splice(index, 1)
+  return { data: { id: data.id } }
+}
