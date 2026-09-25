@@ -57,7 +57,7 @@
         </table>
         <p class="note">
           基线{{ row.baseline_source === 'manual' ? '为手填' : `取开始前 ${row.baseline_days} 天` }}，日均 {{ row.baseline_daily }} 人。
-          额外为负表示没超过自然增长。CPL/CAC/CPO/CPA 只在额外量为正时计算。CPO 按期内新用户的订单数（不是下单人数）对比基线。
+          额外为负表示没超过自然增长。CPL/CAC/CPO/CPA 只在额外量为正时计算。CPO 按投放期内提交的订单数对比基线，不限是不是期内新用户。
           评分看有没有跑赢基线，以及这批新用户里下单、可返现的比例。
         </p>
         <p>

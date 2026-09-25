@@ -201,9 +201,17 @@ module.exports = function registerPromo(router) {
             : kind === 'cpa'
                 ? 'INNER JOIN site2_user_orders o ON o.user_id = u.id AND o.status IN (1,2)'
                 : 'INNER JOIN site2_user_orders o ON o.user_id = u.id'
-        const distinct = kind === 'leads' ? 'COUNT(*)' : kind === 'orders' ? 'COUNT(o.id)' : 'COUNT(DISTINCT u.id)'
+        const distinct = kind === 'leads' ? 'COUNT(*)' : 'COUNT(DISTINCT u.id)'
         const [rows] = await sequelize.query(
             `SELECT ${distinct} AS c FROM site_user u ${join} WHERE u.create_time >= :startUnix AND u.create_time < :endUnix`,
+            { replacements: { startUnix, endUnix } }
+        )
+        return Number(rows[0].c || 0)
+    }
+
+    const countOrders = async (startUnix, endUnix) => {
+        const [rows] = await sequelize.query(
+            `SELECT COUNT(*) AS c FROM site2_user_orders WHERE create_time >= :startUnix AND create_time < :endUnix`,
             { replacements: { startUnix, endUnix } }
         )
         return Number(rows[0].c || 0)
@@ -216,11 +224,11 @@ module.exports = function registerPromo(router) {
             countUsers(win.baselineStartUnix, win.startUnix, 'leads'),
             countUsers(win.baselineStartUnix, win.startUnix, 'acq'),
             countUsers(win.baselineStartUnix, win.startUnix, 'cpa'),
-            countUsers(win.baselineStartUnix, win.startUnix, 'orders'),
+            countOrders(win.baselineStartUnix, win.startUnix),
             countUsers(win.startUnix, win.endUnix, 'leads'),
             countUsers(win.startUnix, win.endUnix, 'acq'),
             countUsers(win.startUnix, win.endUnix, 'cpa'),
-            countUsers(win.startUnix, win.endUnix, 'orders')
+            countOrders(win.startUnix, win.endUnix)
         ])
         const metrics = buildPromoMetrics({
             durationDays: row.duration_days,
