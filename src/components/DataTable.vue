@@ -32,7 +32,7 @@
               {{ formatCell(row[col.key]) }}
             </slot>
           </td>
-          <td v-if="props.enableAction"><button class="page-btn" @click="emit('action_btn_click',row)" >办理</button></td>
+          <td v-if="props.enableAction && row.actionable"><button class="page-btn" @click="emit('action_btn_click',row)" >办理</button></td>
         </tr>
         </tbody>
       </table>

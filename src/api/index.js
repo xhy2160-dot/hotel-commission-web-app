@@ -20,7 +20,7 @@ export const getOderByConfirm = pick(mock.getOderByConfirm, (query) => get('/ord
 export const getScrapperOrders = pick(mock.getScrapperOrders, (query) => get('/orders/get-scraper-orders', query))
 export const searchScraperOrders = pick(mock.searchScraperOrders, (query) => get('/orders/search-scraper-orders', query))
 
-export const getWithdrawals = pick(mock.getWithdrawals, (query) => get('/withdrawals/admin-list', query))
+export const getWithdrawals = pick(mock.getWithdrawals, (query) => get('/withdrawals/get-withdrawals', query))
 export const updateWithdrawalStatus = pick(mock.updateWithdrawalStatus, (data) => post('/withdrawals/update-withdrawal-status', data))
 export const getWithdrawalReviewers = pick(mock.getWithdrawalReviewers, () => get('/withdrawals/reviewers'))
 

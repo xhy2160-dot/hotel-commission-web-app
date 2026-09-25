@@ -3,6 +3,8 @@ import { ref, watch } from 'vue'
 import {updateWithdrawalStatus} from '@/api/index.js'
 import { useToast } from '@/composables/useToast';
 const { showToast } = useToast();
+import { useAuthStore } from '@/stores/auth.js'
+const authStore = useAuthStore()
 
 const props = defineProps({
   isOpen: {
@@ -38,7 +40,8 @@ const handleSave = async () => {
     await updateWithdrawalStatus({
       id: props.data.id,
       status: selectedStatus.value,
-      remark:remarkText.value
+      remark:remarkText.value,
+      staff:authStore.user.id
     })
     showToast('已保存', 'success')
     // Only close modal on successful update

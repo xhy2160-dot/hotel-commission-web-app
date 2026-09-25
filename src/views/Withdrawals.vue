@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import DataTable from "@/components/DataTable.vue"
 import { formatLocalTime, formatLocalISO } from "@/utils/formatDate.js"
@@ -74,8 +74,11 @@ import {getWithdrawals} from "@/api/index.js";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import WithdrawPopover from "@/components/WithdrawPopover.vue";
 import { useToast } from '@/composables/useToast';
-import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
 const { showToast } = useToast();
+import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
+
+
+
 const route = useRoute()
 const loading = ref(false);
 
@@ -122,9 +125,9 @@ const zelleColumns = ref([
   { key: "amount", label: "提现金额 (¥)" },
   { key: "status", label: "状态" },
   { key: "pay_remark", label: "备注" },
-  { key: "reviewer_staff_id", label: "审核人" },
-  { key: "paid_at", label: "付款时间" },
   { key: "created_at", label: "申请时间" },
+  { key: "paid_at", label: "付款时间" },
+  { key: "staff", label: "审核人" },
 ])
 
 const wechatColumns = ref([
@@ -133,9 +136,8 @@ const wechatColumns = ref([
   { key: "real_name", label: "姓名" },
   { key: "amount", label: "提现金额 (¥)" },
   { key: "status", label: "状态" },
-  { key: "reviewer_staff_id", label: "审核人" },
-  { key: "paid_at", label: "付款时间" },
-  { key: "created_at", label: "申请时间" }
+  { key: "created_at", label: "申请时间" },
+  { key: "updated_at", label: "付款时间" },
 ])
 
 const activeColumns = computed(() => {
@@ -157,8 +159,10 @@ const filteredData = computed(() => {
     return {
       ...item,
       created_at: activeTab.value === 'zelle'? formatLocalISO(item.create_time):formatLocalTime(new Date(item.created_at)),
-      paid_at: item.paid_at ? formatLocalTime(item.paid_at) : '',
+      updated_at:activeTab.value === 'zelle'? formatLocalISO(item.update_time):formatLocalTime(new Date(item.updated_at)),
+      paid_at: item.paid_at ? formatLocalISO(item.paid_at):'',
       status: activeTab.value === 'zelle'? zStatusMap[item.status]:wStatusMap[item.status],
+      actionable:item.status===0
     }
   })
 })
@@ -197,10 +201,6 @@ loading.value = true
   }
 }
 
-// Re-fetch data whenever pagination, tab, or filters change
-// watch([currentPage, selectedStatus], () => {
-//   fetchWithdrawals()
-// })
 const handleActionClick =(item)=>{
   currentTransaction.value = item
   isPopoverOpen.value = true
