@@ -131,7 +131,7 @@ export function buildPromoMetrics({
     cpl: extraLeads > 0 ? money(spend / extraLeads) : null,
     cac: extraAcq > 0 ? money(spend / extraAcq) : null,
     cpa: extraCpa > 0 ? money(spend / extraCpa) : null,
-    cpo: extraOrders > 0 ? money(spend / extraOrders) : null,
+    cpo: actualOrders > 0 ? money(spend / actualOrders) : null,
     score: rating.score,
     score_label: rating.label,
   }
