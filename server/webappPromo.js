@@ -211,7 +211,7 @@ module.exports = function registerPromo(router) {
 
     const countOrders = async (startUnix, endUnix) => {
         const [rows] = await sequelize.query(
-            `SELECT COUNT(*) AS c FROM site2_user_orders WHERE create_time >= :startUnix AND create_time < :endUnix`,
+            `SELECT COUNT(o.id) AS c FROM site_user u INNER JOIN site2_user_orders o ON o.user_id = u.id WHERE u.create_time >= :startUnix AND u.create_time < :endUnix`,
             { replacements: { startUnix, endUnix } }
         )
         return Number(rows[0].c || 0)

@@ -572,10 +572,10 @@ function countMockUsers(start, end, kind) {
 }
 
 function countMockOrders(start, end) {
-  return orders.filter((order) => {
-    const at = parseBeijing(order.submitted_at) || new Date(order.createdAt)
-    return at && at >= start && at < end
-  }).length
+  return users.map(userFlags).reduce((sum, user) => {
+    if (!user.at || user.at < start || user.at >= end) return sum
+    return sum + user.orderCount
+  }, 0)
 }
 
 function decoratePromo(row) {
