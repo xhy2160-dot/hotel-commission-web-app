@@ -147,14 +147,15 @@ const normalizeAppeal = (item) => {
     ...item,
     hotel_order_id: item.hotel_order_id || item.order_id || null,
     confirmation_num: item.confirmation_num || item.confirm_num || item.order_no || '',
-    amount: item.amount ?? item.rebate_amount ?? item.cashback_amount ?? '',
+    amount: item.order.amount || '',
     content: item.content || item.reason || item.description || '',
     reply_content: item.reply_content || item.reply || item.remark || '',
     create_time: formatAppealTime(item.create_time || item.created_at || item.createdAt),
     update_time: formatAppealTime(item.update_time || item.updated_at || item.updatedAt),
     staff: staffName(item),
     status: Number.isFinite(status) ? status : item.status,
-    status_label: statusLabel[status] || item.status
+    status_label: statusLabel[status] || item.status,
+    actionable:item.status===0
   }
 }
 
