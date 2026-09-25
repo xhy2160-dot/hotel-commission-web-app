@@ -25,6 +25,18 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
+        path: '/promotions',
+        name: 'promotions',
+        component: () => import('@/views/Promotions.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/promotions/:id',
+        name: 'promotion-detail',
+        component: () => import('@/views/PromotionDetail.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
         path: '/user-orders',
         name: 'user-orders',
         component: () => import('@/views/Orders.vue'),

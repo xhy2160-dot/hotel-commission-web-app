@@ -126,6 +126,14 @@ const cards = [
     accent: '#2667ff',
   },
   {
+    to: '/promotions',
+    icon: IconChart,
+    label: '推广',
+    title: '推广追踪',
+    description: '记录投放，对比基线算 CPL / CAC / CPA',
+    accent: '#2667ff',
+  },
+  {
     to: '/user-orders',
     icon: IconChart,
     label: '订单',
