@@ -22,38 +22,42 @@
         <h3>效果</h3>
         <table>
           <thead>
-            <tr><th></th><th>注册用户</th><th>下单用户</th><th>可返现用户</th></tr>
+            <tr><th></th><th>注册用户</th><th>下单用户</th><th>订单</th><th>可返现用户</th></tr>
           </thead>
           <tbody>
             <tr>
               <td>投放期内实际</td>
               <td>{{ row.actual_leads }}</td>
               <td>{{ row.actual_acq }}</td>
+              <td>{{ row.actual_orders }}</td>
               <td>{{ row.actual_cpa }}</td>
             </tr>
             <tr>
               <td>按基线预计</td>
               <td>{{ row.expected_leads }}</td>
               <td>{{ (row.actual_acq - row.extra_acq).toFixed(1) }}</td>
+              <td>{{ (row.actual_orders - row.extra_orders).toFixed(1) }}</td>
               <td>{{ (row.actual_cpa - row.extra_cpa).toFixed(1) }}</td>
             </tr>
             <tr>
               <td>额外获取</td>
               <td>{{ row.extra_leads }}</td>
               <td>{{ row.extra_acq }}</td>
+              <td>{{ row.extra_orders }}</td>
               <td>{{ row.extra_cpa }}</td>
             </tr>
             <tr>
               <td>单位成本</td>
               <td>{{ formatCost(row.cpl) }} CPL</td>
               <td>{{ formatCost(row.cac) }} CAC</td>
+              <td>{{ formatCost(row.cpo) }} CPO</td>
               <td>{{ formatCost(row.cpa) }} CPA</td>
             </tr>
           </tbody>
         </table>
         <p class="note">
           基线{{ row.baseline_source === 'manual' ? '为手填' : `取开始前 ${row.baseline_days} 天` }}，日均 {{ row.baseline_daily }} 人。
-          额外为负表示没超过自然增长。CPL/CAC/CPA 只在额外量为正时计算。
+          额外为负表示没超过自然增长。CPL/CAC/CPO/CPA 只在额外量为正时计算。CPO 按期内新用户的订单数（不是下单人数）对比基线。
           评分看有没有跑赢基线，以及这批新用户里下单、可返现的比例。
         </p>
         <p>

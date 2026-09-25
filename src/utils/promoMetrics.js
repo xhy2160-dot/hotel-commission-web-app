@@ -93,9 +93,11 @@ export function buildPromoMetrics({
   preLeads = 0,
   preAcq = 0,
   preCpa = 0,
+  preOrders = 0,
   actualLeads = 0,
   actualAcq = 0,
   actualCpa = 0,
+  actualOrders = 0,
 }) {
   const days = Number(durationDays) || 0
   const spend = Number(amount) || 0
@@ -103,12 +105,15 @@ export function buildPromoMetrics({
   const baselineDaily = hasOverride ? Number(baselineDailyOverride) : (BASELINE_DAYS > 0 ? preLeads / BASELINE_DAYS : 0)
   const baselineAcqDaily = BASELINE_DAYS > 0 ? preAcq / BASELINE_DAYS : 0
   const baselineCpaDaily = BASELINE_DAYS > 0 ? preCpa / BASELINE_DAYS : 0
+  const baselineOrderDaily = BASELINE_DAYS > 0 ? preOrders / BASELINE_DAYS : 0
   const expectedLeads = baselineDaily * days
   const expectedAcq = baselineAcqDaily * days
   const expectedCpa = baselineCpaDaily * days
+  const expectedOrders = baselineOrderDaily * days
   const extraLeads = actualLeads - expectedLeads
   const extraAcq = actualAcq - expectedAcq
   const extraCpa = actualCpa - expectedCpa
+  const extraOrders = actualOrders - expectedOrders
   const rating = scorePromo({ extraLeads, expectedLeads, actualLeads, actualAcq, actualCpa })
   return {
     baseline_days: BASELINE_DAYS,
@@ -121,9 +126,12 @@ export function buildPromoMetrics({
     extra_acq: round1(extraAcq),
     actual_cpa: actualCpa,
     extra_cpa: round1(extraCpa),
+    actual_orders: actualOrders,
+    extra_orders: round1(extraOrders),
     cpl: extraLeads > 0 ? money(spend / extraLeads) : null,
     cac: extraAcq > 0 ? money(spend / extraAcq) : null,
     cpa: extraCpa > 0 ? money(spend / extraCpa) : null,
+    cpo: extraOrders > 0 ? money(spend / extraOrders) : null,
     score: rating.score,
     score_label: rating.label,
   }

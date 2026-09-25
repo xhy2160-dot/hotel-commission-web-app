@@ -95,9 +95,11 @@ function buildPromoMetrics({
     preLeads = 0,
     preAcq = 0,
     preCpa = 0,
+    preOrders = 0,
     actualLeads = 0,
     actualAcq = 0,
-    actualCpa = 0
+    actualCpa = 0,
+    actualOrders = 0
 }) {
     const days = num(durationDays)
     const spend = num(amount)
@@ -106,9 +108,11 @@ function buildPromoMetrics({
     const expectedLeads = baselineDaily * days
     const expectedAcq = (preAcq / BASELINE_DAYS) * days
     const expectedCpa = (preCpa / BASELINE_DAYS) * days
+    const expectedOrders = (preOrders / BASELINE_DAYS) * days
     const extraLeads = actualLeads - expectedLeads
     const extraAcq = actualAcq - expectedAcq
     const extraCpa = actualCpa - expectedCpa
+    const extraOrders = actualOrders - expectedOrders
     const rating = scorePromo({ extraLeads, expectedLeads, actualLeads, actualAcq, actualCpa })
     return {
         baseline_days: BASELINE_DAYS,
@@ -121,9 +125,12 @@ function buildPromoMetrics({
         extra_acq: round1(extraAcq),
         actual_cpa: actualCpa,
         extra_cpa: round1(extraCpa),
+        actual_orders: actualOrders,
+        extra_orders: round1(extraOrders),
         cpl: extraLeads > 0 ? money(spend / extraLeads) : null,
         cac: extraAcq > 0 ? money(spend / extraAcq) : null,
         cpa: extraCpa > 0 ? money(spend / extraCpa) : null,
+        cpo: extraOrders > 0 ? money(spend / extraOrders) : null,
         score: rating.score,
         score_label: rating.label
     }
@@ -191,10 +198,10 @@ module.exports = function registerPromo(router) {
     const countUsers = async (startUnix, endUnix, kind) => {
         const join = kind === 'leads'
             ? ''
-            : kind === 'acq'
-                ? 'INNER JOIN site2_user_orders o ON o.user_id = u.id'
-                : 'INNER JOIN site2_user_orders o ON o.user_id = u.id AND o.status IN (1,2)'
-        const distinct = kind === 'leads' ? 'COUNT(*)' : 'COUNT(DISTINCT u.id)'
+            : kind === 'cpa'
+                ? 'INNER JOIN site2_user_orders o ON o.user_id = u.id AND o.status IN (1,2)'
+                : 'INNER JOIN site2_user_orders o ON o.user_id = u.id'
+        const distinct = kind === 'leads' ? 'COUNT(*)' : kind === 'orders' ? 'COUNT(o.id)' : 'COUNT(DISTINCT u.id)'
         const [rows] = await sequelize.query(
             `SELECT ${distinct} AS c FROM site_user u ${join} WHERE u.create_time >= :startUnix AND u.create_time < :endUnix`,
             { replacements: { startUnix, endUnix } }
@@ -205,13 +212,15 @@ module.exports = function registerPromo(router) {
     const windowCounts = async (row) => {
         const win = campaignWindow(row.start_at, row.duration_days)
         if (!win) throw new Error('推广时间无效')
-        const [preLeads, preAcq, preCpa, actualLeads, actualAcq, actualCpa] = await Promise.all([
+        const [preLeads, preAcq, preCpa, preOrders, actualLeads, actualAcq, actualCpa, actualOrders] = await Promise.all([
             countUsers(win.baselineStartUnix, win.startUnix, 'leads'),
             countUsers(win.baselineStartUnix, win.startUnix, 'acq'),
             countUsers(win.baselineStartUnix, win.startUnix, 'cpa'),
+            countUsers(win.baselineStartUnix, win.startUnix, 'orders'),
             countUsers(win.startUnix, win.endUnix, 'leads'),
             countUsers(win.startUnix, win.endUnix, 'acq'),
-            countUsers(win.startUnix, win.endUnix, 'cpa')
+            countUsers(win.startUnix, win.endUnix, 'cpa'),
+            countUsers(win.startUnix, win.endUnix, 'orders')
         ])
         const metrics = buildPromoMetrics({
             durationDays: row.duration_days,
@@ -220,9 +229,11 @@ module.exports = function registerPromo(router) {
             preLeads,
             preAcq,
             preCpa,
+            preOrders,
             actualLeads,
             actualAcq,
-            actualCpa
+            actualCpa,
+            actualOrders
         })
         return {
             start_at: win.startSql,
@@ -232,6 +243,7 @@ module.exports = function registerPromo(router) {
             pre_leads: preLeads,
             pre_acq: preAcq,
             pre_cpa: preCpa,
+            pre_orders: preOrders,
             ...metrics
         }
     }

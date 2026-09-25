@@ -556,6 +556,7 @@ function userFlags(user) {
   const own = orders.filter((order) => order.user_id === user.id)
   return {
     at: parseBeijing(user.registered_at),
+    orderCount: own.length,
     hasOrder: own.length > 0,
     hasCashback: own.some((order) => [1, 2].includes(Number(order.status))),
   }
@@ -570,6 +571,13 @@ function countMockUsers(start, end, kind) {
   }).length
 }
 
+function countMockOrders(start, end) {
+  return users.map(userFlags).reduce((sum, user) => {
+    if (!user.at || user.at < start || user.at >= end) return sum
+    return sum + user.orderCount
+  }, 0)
+}
+
 function decoratePromo(row) {
   const win = campaignWindow(row.start_at, row.duration_days)
   if (!win) return { ...row, score: 0, score_label: '无效' }
@@ -580,9 +588,11 @@ function decoratePromo(row) {
     preLeads: countMockUsers(win.baselineStart, win.start, 'leads'),
     preAcq: countMockUsers(win.baselineStart, win.start, 'acq'),
     preCpa: countMockUsers(win.baselineStart, win.start, 'cpa'),
+    preOrders: countMockOrders(win.baselineStart, win.start),
     actualLeads: countMockUsers(win.start, win.end, 'leads'),
     actualAcq: countMockUsers(win.start, win.end, 'acq'),
     actualCpa: countMockUsers(win.start, win.end, 'cpa'),
+    actualOrders: countMockOrders(win.start, win.end),
   })
   return {
     ...row,

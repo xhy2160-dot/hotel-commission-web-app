@@ -7,7 +7,7 @@
     </header>
     <p class="note">
       额外用户 = 投放期内新注册用户 − 基线日均 × 持续天数。基线默认取开始前 7 天日均新用户，也可手填。
-      CPL / CAC / CPA = 花费 ÷ 额外注册 / 额外下单用户 / 额外可返现用户。
+      CPL / CAC / CPO / CPA = 花费 ÷ 额外注册 / 额外下单用户 / 额外订单 / 额外可返现用户。
     </p>
 
     <section class="panel">
@@ -55,6 +55,7 @@
         <span>额外用户 {{ preview.extra_leads }}</span>
         <span>CPL {{ formatCost(preview.cpl) }}</span>
         <span>CAC {{ formatCost(preview.cac) }}</span>
+        <span>CPO {{ formatCost(preview.cpo) }}</span>
         <span>CPA {{ formatCost(preview.cpa) }}</span>
         <span>评分 {{ preview.score }} {{ preview.score_label }}</span>
       </div>
@@ -125,6 +126,7 @@ const columns = [
   { key: 'extra_leads', label: '额外用户' },
   { key: 'cpl', label: 'CPL' },
   { key: 'cac', label: 'CAC' },
+  { key: 'cpo', label: 'CPO' },
   { key: 'cpa', label: 'CPA' },
   { key: 'score', label: '评分' },
   { key: 'actions', label: '操作' },
@@ -147,6 +149,7 @@ const displayRows = (list) => list.map((row) => ({
   amount: Number(row.amount).toFixed(2),
   cpl: formatCost(row.cpl),
   cac: formatCost(row.cac),
+  cpo: formatCost(row.cpo),
   cpa: formatCost(row.cpa),
 }))
 
