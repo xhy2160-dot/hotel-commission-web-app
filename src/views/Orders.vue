@@ -40,6 +40,7 @@
         <template #[`cell(confirmation_num)`]="{ row }">
           <router-link class="order-link" :to="`/user-orders/${row.id}`">{{ row.confirmation_num }}</router-link>
         </template>
+        <template #[`cell(status)`]="{ row }"> <span :style="{ color: statusMap[String(row.status)]?.color || '#000' }" > {{ statusMap[String(row.status)]?.label || '未知' }} </span> </template>
       </DataTable>
     </div>
   </div>
@@ -83,15 +84,16 @@ const columns = ref([
 
 const data = ref([])
 
+
 const statusMap = {
-  "0": "已提交",
-  "1": "可返现",
-  "2": "已返现",
-  "3": "可申诉",
-  "4": "已提交申述",
-  "5": "关闭",
-  "6": "已删除"
-}
+  "0": { label: "已提交", color: '#000' },    // Blue (Pending / Submitted)
+  "1": { label: "可返现", color: '#A1D99B' },    // Light Green (Eligible)
+  "2": { label: "已返现", color: '#238B45' },    // Dark Green (Completed)
+  "3": { label: "可申诉", color: '#FFB74D' },    // Orange (Action required)
+  "4": { label: "已提交申诉", color: '#FB8C00' },  // Purple/Indigo (Appeal in progress)
+  "5": { label: "关闭", color: '#969696' },      // Grey (Closed)
+  "6": { label: "已删除", color: '#636363' }     // Red (Deleted)
+};
 
 
 // --- Filtering & Searching ---
@@ -104,8 +106,6 @@ const filteredOrders = computed(() => {
       })
       .map(order => ({
         ...order,
-        // Maps numeric status to human-readable label (e.g. "0" -> "已提交")
-        status: statusMap[order.status] || order.status,
         createdAt:formatLocalTime(order.createdAt),
       }))
 })
