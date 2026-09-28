@@ -1,4 +1,5 @@
 import { inDayRange } from '@/utils/range.js'
+import { buildDashboardSeries } from '@/utils/dashboardSeries.js'
 import { buildFirstOrderRates } from '@/utils/firstOrderRates.js'
 import { buildPromoMetrics, campaignWindow, formatBeijing, parseBeijing } from '@/utils/promoMetrics.js'
 
@@ -509,6 +510,10 @@ export const getDashboard = async (rangeQuery = {}) => {
 
 export const getFirstOrderRates = async (query = {}) => ({
   data: buildFirstOrderRates(users, orders, query),
+})
+
+export const getDashboardSeries = async (query = {}) => ({
+  data: buildDashboardSeries(users, orders, query),
 })
 
 export const getBusinessStats = async (query = {}) => {

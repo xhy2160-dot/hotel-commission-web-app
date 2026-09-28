@@ -15,6 +15,12 @@ export function rangeBounds(range, now = new Date()) {
   if (range === 'week') {
     const weekday = from.getDay() || 7
     from.setDate(from.getDate() - weekday + 1)
+  } else if (range === 'last7') {
+    from.setDate(from.getDate() - 6)
+  } else if (range === 'last14') {
+    from.setDate(from.getDate() - 13)
+  } else if (range === 'last30') {
+    from.setDate(from.getDate() - 29)
   } else if (range === 'month') {
     from.setDate(1)
   }

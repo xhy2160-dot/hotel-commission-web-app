@@ -35,6 +35,7 @@ export const getOrderDetail = pick(mock.getOrderDetail, (id) => get('/orders/det
 export const getDashboard = pick(mock.getDashboard, (query) => get('/dashboard', query))
 export const getBusinessStats = pick(mock.getBusinessStats, (query) => get('/stats', query))
 export const getFirstOrderRates = pick(mock.getFirstOrderRates, (query) => get('/first-order-rates', query))
+export const getDashboardSeries = pick(mock.getDashboardSeries, (query) => get('/dashboard/series', query))
 export const getPromotions = pick(mock.getPromotions, () => get('/promotions'))
 export const previewPromotion = pick(mock.previewPromotion, (query) => get('/promotions/preview', query))
 export const getPromotionDetail = pick(mock.getPromotionDetail, (id) => get('/promotions/detail', { id }))

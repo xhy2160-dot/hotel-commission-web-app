@@ -19,6 +19,20 @@
         <span>注册后30日首单率 · {{ firstOrderRateHint(summary.days30) }}</span>
       </div>
     </div>
+    <div v-if="!loading && months.length" class="charts">
+      <TrendChart
+          title="月度佣金与新增用户"
+          subtitle="佣金按爬虫入账，用户按注册月"
+          :labels="monthLabels"
+          :series="monthSeries"
+      />
+      <TrendChart
+          title="月度首单率"
+          subtitle="已满观察期的注册队列"
+          :labels="monthLabels"
+          :series="rateSeries"
+      />
+    </div>
     <LoadingSpinner v-if="loading" />
     <template v-else>
       <div class="table-container">
@@ -72,9 +86,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getBusinessStats, getFirstOrderRates } from '@/api/index.js'
+import TrendChart from '@/components/TrendChart.vue'
 import { firstOrderRateHint, formatFirstOrderRate } from '@/utils/firstOrderRates.js'
 import { rangeBounds } from '@/utils/range.js'
 
@@ -87,6 +102,16 @@ const vips = ref([])
 const summary = ref(null)
 
 const formatRate = (rate) => `${Math.round(Number(rate) * 1000) / 10}%`
+const monthLabels = computed(() => months.value.map((row) => row.month))
+const monthSeries = computed(() => [
+  { key: 'commission', label: '佣金收入', color: '#2563eb', values: months.value.map((row) => Number(row.commission) || 0) },
+  { key: 'users', label: '新增用户', color: '#0f766e', values: months.value.map((row) => Number(row.users) || 0) },
+])
+const rateSeries = computed(() => [
+  { key: 'd7', label: '7日首单率%', color: '#2563eb', values: months.value.map((row) => percent(row.first_order_7d)) },
+  { key: 'd30', label: '30日首单率%', color: '#d97706', values: months.value.map((row) => percent(row.first_order_30d)) },
+])
+const percent = (item) => (item && item.rate !== null && item.rate !== undefined ? Math.round(item.rate * 1000) / 10 : 0)
 
 const load = async () => {
   loading.value = true
@@ -138,6 +163,8 @@ onMounted(load)
 .summary div { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; }
 .summary strong { display: block; font-size: 28px; letter-spacing: -0.03em; }
 .summary span { color: #6b7280; font-size: 13px; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+@media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
 .search-btn { padding: 8px 14px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
 .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; margin-bottom: 20px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
