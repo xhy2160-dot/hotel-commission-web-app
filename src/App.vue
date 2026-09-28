@@ -9,6 +9,10 @@ const mockMode = import.meta.env.VITE_USE_MOCK === 'true'
   <router-view />
 </template>
 
+<style>
+html, body, #app { margin: 0; min-height: 100%; }
+body { font-family: Inter, system-ui, sans-serif; background: #f4f6f8; }
+</style>
 <style scoped>
 .mock-banner {
   margin: 0;

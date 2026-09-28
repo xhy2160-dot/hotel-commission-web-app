@@ -6,6 +6,7 @@ const pick = (mockFn, liveFn) => (...args) => (useMock ? mockFn(...args) : liveF
 
 export const loginPost = pick(mock.loginPost, (formData) => post('/login', formData))
 export const authMeGet = pick(mock.authMeGet, () => get('/auth/me'))
+export const logoutPost = pick(mock.logoutPost, () => post('/logout'))
 
 export const getAllStaff = pick(mock.getAllStaff, () => get('/get-all-staff'))
 export const addStaff = pick(mock.addStaff, (formData) => post('/staff/add', formData))
@@ -34,6 +35,8 @@ export const updateAdminUser = pick(mock.updateAdminUser, (data) => post('/users
 export const getOrderDetail = pick(mock.getOrderDetail, (id) => get('/orders/detail', { id }))
 export const getDashboard = pick(mock.getDashboard, (query) => get('/dashboard', query))
 export const getBusinessStats = pick(mock.getBusinessStats, (query) => get('/stats', query))
+export const getFirstOrderRates = pick(mock.getFirstOrderRates, (query) => get('/first-order-rates', query))
+export const getDashboardSeries = pick(mock.getDashboardSeries, (query) => get('/dashboard/series', query))
 export const getPromotions = pick(mock.getPromotions, () => get('/promotions'))
 export const previewPromotion = pick(mock.previewPromotion, (query) => get('/promotions/preview', query))
 export const getPromotionDetail = pick(mock.getPromotionDetail, (id) => get('/promotions/detail', { id }))

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import {loginPost,authMeGet} from "@/api/index.js";
+import { loginPost, authMeGet, logoutPost } from '@/api/index.js'
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -43,11 +43,11 @@ export const useAuthStore = defineStore('auth', {
         },
         async logout() {
             try {
-                await api.post('/auth/logout');
-            } catch (err) {
-                console.error('Logout error', err);
+                await logoutPost()
+            } catch {
+                // Clear local session even if the cookie endpoint is missing.
             } finally {
-                this.user = null; // Clear state regardless of backend success
+                this.user = null
             }
         }
     }

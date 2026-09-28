@@ -169,7 +169,7 @@ const exportRows = async () => {
   const res = await getUserOrders(params)
   const rows = (res.data || []).map((order) => ({
     ...order,
-    status: statusMap[order.status]['label'] || order.status,
+    status: statusMap[order.status] || order.status,
   }))
   downloadExcel(exportFileName('订单'), exportColumns, rows)
 }

@@ -1,4 +1,6 @@
 import { inDayRange } from '@/utils/range.js'
+import { buildDashboardSeries } from '@/utils/dashboardSeries.js'
+import { buildFirstOrderRates } from '@/utils/firstOrderRates.js'
 import { buildPromoMetrics, campaignWindow, formatBeijing, parseBeijing } from '@/utils/promoMetrics.js'
 
 // Preview stand-ins only. Live admin reads site2_app_vip_level.
@@ -14,6 +16,8 @@ const users = [
   { id: 12, legal_name: '陈晓', nickname: '晓晓', registered_at: '2026-04-02 09:12:00', vip_id: 2, status: 'active', inviter_id: 8 },
   { id: 19, legal_name: '王磊', nickname: '磊磊', registered_at: '2026-06-18 16:40:00', vip_id: 1, status: 'active', inviter_id: 12 },
   { id: 27, legal_name: '赵敏', nickname: '敏敏', registered_at: '2026-08-09 11:05:00', vip_id: 1, status: 'inactive', inviter_id: null },
+  { id: 31, legal_name: '周宁', nickname: '宁宁', registered_at: '2026-08-20 10:00:00', vip_id: 1, status: 'active', inviter_id: null },
+  { id: 32, legal_name: '吴凡', nickname: '凡凡', registered_at: '2026-07-01 09:30:00', vip_id: 1, status: 'active', inviter_id: 8 },
 ]
 
 function commissionSnapshot(lines, rebateRate) {
@@ -114,6 +118,46 @@ const orders = [
     calculated_at: '2026-09-18 16:41:02',
     ...commissionSnapshot([
       { source: 'TACS', amount: '9.00', currency: 'SGD', fx_rate: '0.18' },
+    ], 0.05),
+  },
+  {
+    id: 141,
+    order_no: 'FZ20260822001',
+    user_id: 31,
+    confirmation_num: '6612001100',
+    hotel_name_cn: '杭州西溪喜来登',
+    check_in_date: '2026-08-21',
+    check_out_date: '2026-08-22',
+    status: 1,
+    remark: '',
+    appeal_id: null,
+    createdAt: '2026-08-22T02:10:00.000Z',
+    submitted_at: '2026-08-22 10:10:00',
+    source: '小程序',
+    cashback_date: '2026-08-29',
+    calculated_at: '2026-08-22 10:12:00',
+    ...commissionSnapshot([
+      { source: 'ONYX', amount: '8.00', currency: 'USD', fx_rate: '0.14' },
+    ], 0.05),
+  },
+  {
+    id: 142,
+    order_no: 'FZ20260720001',
+    user_id: 32,
+    confirmation_num: '7712002200',
+    hotel_name_cn: '成都太古里博舍',
+    check_in_date: '2026-07-18',
+    check_out_date: '2026-07-20',
+    status: 2,
+    remark: '',
+    appeal_id: null,
+    createdAt: '2026-07-20T03:00:00.000Z',
+    submitted_at: '2026-07-20 11:00:00',
+    source: '小程序',
+    cashback_date: '2026-07-27',
+    calculated_at: '2026-07-20 11:03:00',
+    ...commissionSnapshot([
+      { source: 'TACS', amount: '6.00', currency: 'USD', fx_rate: '0.14' },
     ], 0.05),
   },
 ]
@@ -335,6 +379,7 @@ function readParams(params) {
 
 export const loginPost = async () => ({ user: mockUser })
 export const authMeGet = async () => ({ user: mockUser })
+export const logoutPost = async () => ({ data: true })
 
 export const getVipLevels = async () => ({ data: vipLevels })
 
@@ -449,6 +494,7 @@ export const getDashboard = async (rangeQuery = {}) => {
   const pendingWithdrawals = periodWithdrawals.filter((item) => Number(item.status) === 0)
   const periodAppeals = appeals.filter((item) => inDayRange(item.create_time, from, to))
   const pendingAppeals = periodAppeals.filter((item) => Number(item.status) === 0)
+  const firstOrder = buildFirstOrderRates(users, orders)
   return {
     data: {
       newUsers: newUsers.length,
@@ -457,9 +503,19 @@ export const getDashboard = async (rangeQuery = {}) => {
       withdrawalApplies: periodWithdrawals.length,
       pendingWithdrawals: pendingWithdrawals.length,
       pendingAppeals: pendingAppeals.length,
+      first_order_7d: firstOrder.days7,
+      first_order_30d: firstOrder.days30,
     },
   }
 }
+
+export const getFirstOrderRates = async (query = {}) => ({
+  data: buildFirstOrderRates(users, orders, query),
+})
+
+export const getDashboardSeries = async (query = {}) => ({
+  data: buildDashboardSeries(users, orders, query),
+})
 
 export const getBusinessStats = async (query = {}) => {
   const from = query.from
@@ -489,12 +545,16 @@ export const getBusinessStats = async (query = {}) => {
     if (!months.has(month)) continue
     months.get(month).payout += Number(item.amount || 0)
   }
+  const firstOrder = buildFirstOrderRates(users, orders, { from, to })
+  const firstByMonth = new Map(firstOrder.months.map((row) => [row.month, row]))
   const monthRows = [...months.values()].sort((a, b) => a.month.localeCompare(b.month)).map((row) => ({
     ...row,
     commission: row.commission.toFixed(2),
     rebate: row.rebate.toFixed(2),
     payout: row.payout.toFixed(2),
     profit: (row.commission - row.rebate).toFixed(2),
+    first_order_7d: firstByMonth.get(row.month)?.days7 || { converted: 0, cohort: 0, rate: null },
+    first_order_30d: firstByMonth.get(row.month)?.days30 || { converted: 0, cohort: 0, rate: null },
   }))
   const vipRows = vipLevels.map((vip) => ({
     vip_name: vip.vip_name,
