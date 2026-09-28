@@ -1,21 +1,9 @@
-import { formatDay, parseTime, startOfDay } from './range.js'
+import { eachDay, formatDay, parseTime } from './range.js'
 
 function dayKey(value) {
   const date = parseTime(value)
   if (!date) return null
   return formatDay(date)
-}
-
-function eachDay(from, to) {
-  const days = []
-  const cursor = startOfDay(parseTime(`${from} 00:00:00`))
-  const end = startOfDay(parseTime(`${to} 00:00:00`))
-  if (!cursor || !end) return days
-  while (cursor <= end) {
-    days.push(formatDay(cursor))
-    cursor.setDate(cursor.getDate() + 1)
-  }
-  return days
 }
 
 export function buildDashboardSeries(users, orders, query = {}) {

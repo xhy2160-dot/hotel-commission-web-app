@@ -37,6 +37,30 @@ export function parseTime(value) {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+export function nextDay(day) {
+  const [year, month, date] = String(day).split('-').map(Number)
+  const next = new Date(Date.UTC(year, month - 1, date + 1))
+  const pad = (num) => String(num).padStart(2, '0')
+  return `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`
+}
+
+export function eachDay(from, to) {
+  const days = []
+  if (!from || !to || from > to) return days
+  let day = from
+  while (day <= to) {
+    days.push(day)
+    day = nextDay(day)
+  }
+  return days
+}
+
+export function monthEnd(month) {
+  const [year, mon] = String(month).split('-').map(Number)
+  const last = new Date(year, mon, 0).getDate()
+  return `${month}-${String(last).padStart(2, '0')}`
+}
+
 export function inDayRange(value, from, to) {
   const date = parseTime(value)
   if (!date) return false

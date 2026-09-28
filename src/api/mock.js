@@ -379,6 +379,7 @@ function readParams(params) {
 
 export const loginPost = async () => ({ user: mockUser })
 export const authMeGet = async () => ({ user: mockUser })
+export const logoutPost = async () => ({ data: true })
 
 export const getVipLevels = async () => ({ data: vipLevels })
 

@@ -6,6 +6,7 @@ const pick = (mockFn, liveFn) => (...args) => (useMock ? mockFn(...args) : liveF
 
 export const loginPost = pick(mock.loginPost, (formData) => post('/login', formData))
 export const authMeGet = pick(mock.authMeGet, () => get('/auth/me'))
+export const logoutPost = pick(mock.logoutPost, () => post('/logout'))
 
 export const getAllStaff = pick(mock.getAllStaff, () => get('/get-all-staff'))
 export const addStaff = pick(mock.addStaff, (formData) => post('/staff/add', formData))

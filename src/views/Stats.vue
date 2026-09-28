@@ -21,10 +21,16 @@
     </div>
     <div v-if="!loading && months.length" class="charts">
       <TrendChart
-          title="月度佣金与新增用户"
-          subtitle="佣金按爬虫入账，用户按注册月"
+          title="月度佣金"
+          subtitle="按爬虫入账，单位人民币"
           :labels="monthLabels"
-          :series="monthSeries"
+          :series="moneySeries"
+      />
+      <TrendChart
+          title="月度新增用户与订单"
+          subtitle="用户按注册月，订单按提交月"
+          :labels="monthLabels"
+          :series="countSeries"
       />
       <TrendChart
           title="月度首单率"
@@ -63,7 +69,7 @@
             <td>{{ row.users }}</td>
             <td :title="firstOrderRateHint(row.first_order_7d)">{{ formatFirstOrderRate(row.first_order_7d) }}</td>
             <td :title="firstOrderRateHint(row.first_order_30d)">{{ formatFirstOrderRate(row.first_order_30d) }}</td>
-            <td><router-link :to="`/user-orders?from=${row.month}-01&to=${row.month}-31`">订单明细</router-link></td>
+            <td><router-link :to="`/user-orders?from=${row.month}-01&to=${monthEnd(row.month)}`">订单明细</router-link></td>
           </tr>
           </tbody>
         </table>
@@ -91,7 +97,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getBusinessStats, getFirstOrderRates } from '@/api/index.js'
 import TrendChart from '@/components/TrendChart.vue'
 import { firstOrderRateHint, formatFirstOrderRate } from '@/utils/firstOrderRates.js'
-import { rangeBounds } from '@/utils/range.js'
+import { monthEnd, rangeBounds } from '@/utils/range.js'
 
 const initial = rangeBounds('month')
 const from = ref(initial.from)
@@ -103,9 +109,13 @@ const summary = ref(null)
 
 const formatRate = (rate) => `${Math.round(Number(rate) * 1000) / 10}%`
 const monthLabels = computed(() => months.value.map((row) => row.month))
-const monthSeries = computed(() => [
+const moneySeries = computed(() => [
   { key: 'commission', label: '佣金收入', color: '#2563eb', values: months.value.map((row) => Number(row.commission) || 0) },
-  { key: 'users', label: '新增用户', color: '#0f766e', values: months.value.map((row) => Number(row.users) || 0) },
+  { key: 'rebate', label: '预计返现', color: '#d97706', values: months.value.map((row) => Number(row.rebate) || 0) },
+])
+const countSeries = computed(() => [
+  { key: 'users', label: '新增用户', color: '#2563eb', values: months.value.map((row) => Number(row.users) || 0) },
+  { key: 'orders', label: '订单量', color: '#0f766e', values: months.value.map((row) => Number(row.orders) || 0) },
 ])
 const rateSeries = computed(() => [
   { key: 'd7', label: '7日首单率%', color: '#2563eb', values: months.value.map((row) => percent(row.first_order_7d)) },
@@ -164,6 +174,7 @@ onMounted(load)
 .summary strong { display: block; font-size: 28px; letter-spacing: -0.03em; }
 .summary span { color: #6b7280; font-size: 13px; }
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.charts > :last-child { grid-column: 1 / -1; }
 @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
 .search-btn { padding: 8px 14px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
 .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; margin-bottom: 20px; }

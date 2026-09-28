@@ -30,7 +30,8 @@ export function formatFirstOrderRate(item) {
 }
 
 export function firstOrderRateHint(item) {
-  if (!item || !item.cohort) return '注册未满观察期，暂不计入'
+  if (!item) return ''
+  if (!item.cohort) return '注册未满观察期，暂不计入'
   return `${item.converted}/${item.cohort}`
 }
 

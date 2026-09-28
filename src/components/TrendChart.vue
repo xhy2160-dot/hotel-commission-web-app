@@ -21,7 +21,7 @@
         <path v-if="line.area" :d="line.area" :fill="line.color" class="chart__area" />
         <path :d="line.path" :stroke="line.color" class="chart__line" />
       </g>
-      <g v-for="(label, index) in xLabels" :key="label + index">
+      <g v-for="label in xLabels" :key="`${label.index}-${label.text}`">
         <text :x="xAt(label.index)" :y="height - 10" class="chart__xlabel">{{ label.text }}</text>
       </g>
     </svg>
@@ -41,7 +41,7 @@ const props = defineProps({
 
 const width = 720
 const height = 240
-const pad = { top: 16, right: 16, bottom: 32, left: 44 }
+const pad = { top: 16, right: 16, bottom: 32, left: 52 }
 
 const lines = computed(() => props.series.filter((item) => item && item.values))
 
@@ -58,7 +58,7 @@ const yTicks = computed(() => {
   return Array.from({ length: ticks + 1 }, (_, index) => {
     const value = (maxValue.value / ticks) * index
     const y = pad.top + (1 - index / ticks) * (height - pad.top - pad.bottom)
-    return { value, y, label: Number.isInteger(value) ? value : value.toFixed(1) }
+    return { value, y, label: formatTick(value) }
   })
 })
 
@@ -73,6 +73,16 @@ const xLabels = computed(() => {
   }
   return marks
 })
+
+function formatTick(value) {
+  const abs = Math.abs(value)
+  if (abs >= 10000) {
+    const wan = value / 10000
+    return `${Number.isInteger(wan) ? wan : wan.toFixed(1)}万`
+  }
+  if (Number.isInteger(value)) return String(value)
+  return value.toFixed(1)
+}
 
 function formatLabel(label) {
   const text = String(label || '')

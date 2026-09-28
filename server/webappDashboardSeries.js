@@ -26,13 +26,20 @@ function formatDay(date) {
     return `${get('year')}-${get('month')}-${get('day')}`
 }
 
+function nextDay(day) {
+    const [year, month, date] = String(day).split('-').map(Number)
+    const next = new Date(Date.UTC(year, month - 1, date + 1))
+    const pad = (num) => String(num).padStart(2, '0')
+    return `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`
+}
+
 function eachDay(from, to) {
     const days = []
-    const cursor = new Date(`${from}T00:00:00+08:00`)
-    const end = new Date(`${to}T00:00:00+08:00`)
-    while (cursor <= end) {
-        days.push(formatDay(cursor))
-        cursor.setDate(cursor.getDate() + 1)
+    if (!from || !to || from > to) return days
+    let day = from
+    while (day <= to) {
+        days.push(day)
+        day = nextDay(day)
     }
     return days
 }

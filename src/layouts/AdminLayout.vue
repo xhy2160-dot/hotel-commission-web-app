@@ -49,7 +49,7 @@ const title = computed(() => pageTitle(route.path))
 const userName = computed(() => authStore.user?.nickname || authStore.user?.email || '员工')
 
 const logout = async () => {
-  authStore.user = null
+  await authStore.logout()
   await router.push('/login')
 }
 </script>
@@ -62,6 +62,8 @@ const logout = async () => {
   color: #d1d5db;
   padding: 20px 14px;
   flex-shrink: 0;
+  min-height: 100vh;
+  overflow-y: auto;
 }
 .brand { padding: 4px 10px 20px; }
 .brand strong { display: block; color: #fff; font-size: 18px; }

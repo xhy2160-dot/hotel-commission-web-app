@@ -134,22 +134,32 @@ const growth = computed(() => [
   { label: '累计订单', value: counts.value.totals.orders, to: '/user-orders', spark: spark(points.value.map((row) => row.orders_cum)) },
 ])
 const todos = computed(() => [
-  { label: '待处理提现', value: counts.value.pendingWithdrawals, to: `/withdrawals?${query.value}&pending=1` },
-  { label: '待处理申诉', value: counts.value.pendingAppeals, to: `/user-appeals?${query.value}&pending=1` },
+  { label: '待处理提现', value: counts.value.pendingWithdrawals, to: '/withdrawals?pending=1' },
+  { label: '待处理申诉', value: counts.value.pendingAppeals, to: '/user-appeals?pending=1' },
   { label: '可返现订单', value: counts.value.cashbackOrders, to: `/user-orders?${query.value}&cashback=1` },
 ])
 
+let loadId = 0
 async function loadDashboard() {
+  const requestId = ++loadId
   try {
-    const [res, seriesRes, rateRes] = await Promise.all([
+    const allTime = { from: '1970-01-01', to: bounds.value.to }
+    const [res, seriesRes, rateRes, pendingRes] = await Promise.all([
       getDashboard(bounds.value),
       getDashboardSeries(chartBounds.value).catch(() => ({ data: null })),
       getFirstOrderRates().catch(() => ({ data: null })),
+      getDashboard(allTime).catch(() => ({ data: null })),
     ])
+    if (requestId !== loadId) return
+    const period = res?.data || {}
+    const pending = pendingRes?.data || period
     counts.value = {
-      ...res.data,
-      firstOrder7d: rateRes.data?.days7 || res.data.first_order_7d || null,
-      firstOrder30d: rateRes.data?.days30 || res.data.first_order_30d || null,
+      ...period,
+      cashbackOrders: period.cashbackOrders || 0,
+      pendingWithdrawals: pending.pendingWithdrawals || 0,
+      pendingAppeals: pending.pendingAppeals || 0,
+      firstOrder7d: rateRes.data?.days7 || period.first_order_7d || null,
+      firstOrder30d: rateRes.data?.days30 || period.first_order_30d || null,
       totals: seriesRes.data?.totals || { users: 0, orders: 0 },
       series: seriesRes.data?.series || [],
     }
