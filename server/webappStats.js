@@ -29,6 +29,22 @@ function pickCol(cols, names) {
     return null
 }
 
+const EXCLUDED_IMPORT_DAYS = ['2026-09-03']
+
+function beijingDay(value) {
+    if (!value) return null
+    if (typeof value === 'number') {
+        const ms = value < 1e12 ? value * 1000 : value
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms))
+    }
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) {
+        const match = String(value).match(/(\d{4}-\d{2}-\d{2})/)
+        return match ? match[1] : null
+    }
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+}
+
 function monthKey(value) {
     if (!value) return null
     if (typeof value === 'number') {
@@ -105,6 +121,7 @@ async function sumScraper(sequelize, table, kind, range, rates) {
     )
     const byMonth = {}
     for (const row of rows) {
+        if (EXCLUDED_IMPORT_DAYS.includes(beijingDay(row.at))) continue
         const month = monthKey(row.at)
         if (!month) continue
         const amount = num(row.amount) || num(row.alt_amount)
@@ -183,7 +200,7 @@ module.exports = function registerStats(router) {
             const names = await tableNames(sequelize)
             for (const table of names) {
                 const lower = String(table).toLowerCase()
-                if (lower.includes('onyx')) {
+                if (lower.includes('onyx') && !lower.includes('pull')) {
                     for (const row of await sumScraper(sequelize, table, 'onyx', r, rates)) ensure(row.month).commission += row.commission
                 } else if (lower.includes('tacs')) {
                     for (const row of await sumScraper(sequelize, table, 'tacs', r, rates)) ensure(row.month).commission += row.commission
