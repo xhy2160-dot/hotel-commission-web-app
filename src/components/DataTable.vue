@@ -46,6 +46,13 @@
       <div class="pagination-actions">
         <button
             class="page-btn"
+            :disabled="props.page === 1"
+            @click="handlePageClick('first')"
+        >
+          首页
+        </button>
+        <button
+            class="page-btn"
             :disabled="props.page <= 1"
             @click="handlePageClick('previous')"
         >
@@ -57,6 +64,13 @@
             @click="handlePageClick('next')"
         >
           下一页
+        </button>
+        <button
+            class="page-btn"
+            :disabled="props.page === totalPages"
+            @click="handlePageClick('last')"
+        >
+          尾页
         </button>
       </div>
     </div>
@@ -183,6 +197,12 @@ const handlePageClick = (direction) => {
     emit('pageChange')
   } else if (direction === 'next' && props.page  < totalPages.value) {
     emit('update:page', props.page + 1)
+    emit('pageChange')
+  }else if (direction === 'last') {
+    emit('update:page', totalPages.value)
+    emit('pageChange')
+  }else if (direction === 'first') {
+    emit('update:page', 1)
     emit('pageChange')
   }
 }
