@@ -154,6 +154,8 @@ const exportColumns = [
   { key: 'confirmation_num', label: '确认号' },
   { key: 'user_id', label: '用户ID' },
   { key: 'hotel_name_cn', label: '酒店' },
+  { key: 'check_in_date', label: '入住日期' },
+  { key: 'check_out_date', label: '退房日期' },
   { key: 'commission_cny', label: '人民币佣金合计' },
   { key: 'rebate_rate', label: '当时返现比例' },
   { key: 'amount', label: '人民币应返' },
@@ -167,10 +169,16 @@ const exportRows = async () => {
   if (route.query.cashback) params.set('cashback', route.query.cashback)
   if (searchQuery.value.trim()) params.set('confirmation', searchQuery.value.trim())
   const res = await getUserOrders(params)
-  const rows = (res.data || []).map((order) => ({
-    ...order,
-    status: statusMap[order.status] || order.status,
-  }))
+  const rows = (res.data || []).map((order) => {
+    const status = statusMap[String(order.status)]
+    const rate = Number(order.rebate_rate)
+    return {
+      ...order,
+      rebate_rate: Number.isFinite(rate) ? `${Math.round(rate * 1000) / 10}%` : '',
+      status: status?.label || order.status || '',
+      submitted_at: formatLocalTime(order.createdAt || order.submitted_at || order.created_at),
+    }
+  })
   downloadExcel(exportFileName('订单'), exportColumns, rows)
 }
 </script>
