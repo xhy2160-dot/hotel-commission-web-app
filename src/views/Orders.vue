@@ -35,22 +35,27 @@
     </div>
 <LoadingSpinner v-if="loading"/>
     <!-- Data Table -->
-    <div class="table-container" v-if="!loading">
+    <div class="table-container">
       <DataTable :columns="columns" :data="filteredOrders" v-model:page="currentPage" :limit :total="totalItems" @page-change="fetchOrders" @update:page="val => currentPage = val">
-        <template #[`cell(confirmation_num)`]="{ row }">
-          <router-link class="order-link" :to="`/user-orders/${row.id}`">{{ row.confirmation_num }}</router-link>
+        <template #[`cell(id)`]="{ row }">  <router-link class="order-link" :to="`/user-orders/${row.id}`">{{ row.id }}</router-link> </template>
+        <template #[`cell(user_id)`]="{ row }">
+          <router-link class="order-link" :to="`/users/${row.user_id}`">{{ row.user_id }}</router-link>
+        </template>
+        <template #[`cell(confirmation_num)`]="{ row }"><div @click="searchScraperOrder(row.confirmation_num)"><span :style="{ color: '#0000FF', cursor:'pointer',textDecoration: 'underline' }">{{ row.confirmation_num }}</span></div>
         </template>
         <template #[`cell(status)`]="{ row }"> <span :style="{ color: statusMap[String(row.status)]?.color || '#000' }" > {{ statusMap[String(row.status)]?.label || '未知' }} </span> </template>
       </DataTable>
     </div>
   </div>
+  <JSONPopover :isOpen="JSONPopoverOpen" :searchData="scraperOrders" @close="JSONPopoverOpen=false"/>
 </template>
 
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue'
 import { useRoute } from 'vue-router'
 import DataTable from "@/components/DataTable.vue";
-import {getOderByConfirm, getUserOrders} from "@/api/index.js";
+import JSONPopover from "@/components/JSONPopover.vue"
+import {getOderByConfirm, getUserOrders,searchScraperOrders} from "@/api/index.js";
 import {formatLocalTime} from "@/utils/formatDate.js";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import {useToast} from "@/composables/useToast.js";
@@ -141,6 +146,26 @@ const handleSearchOrder=async ()=>{
   const res =await getOderByConfirm({confirmation:searchQuery.value})
   data.value = res.data
 }
+
+const scraperOrders = ref(null)
+const JSONPopoverOpen = ref(false)
+
+const searchScraperOrder = async (confirmNo) => {
+  if (!confirmNo) return;
+
+  loading.value = true;
+  try {
+    const res = await searchScraperOrders({ query: String(confirmNo) });
+    scraperOrders.value = res?.data || [];
+    JSONPopoverOpen.value = true;
+  } catch (error) {
+    console.error('Failed to fetch scraper orders:', error);
+    // Optional: add UI notification/toast alert here
+  } finally {
+    loading.value = false;
+  }
+};
+
 onMounted(() => {
   fetchOrders()
 })
