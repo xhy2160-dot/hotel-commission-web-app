@@ -8,6 +8,17 @@
       <label>到 <input v-model="to" type="date" /></label>
       <button class="search-btn" @click="load">查询</button>
     </div>
+    <p class="hint">7日 / 30日首单率只统计注册已满观察期的用户；首单是该用户提交的第一笔酒店订单。</p>
+    <div v-if="!loading && summary" class="summary">
+      <div>
+        <strong>{{ formatFirstOrderRate(summary.days7) }}</strong>
+        <span>注册后7日首单率 · {{ firstOrderRateHint(summary.days7) }}</span>
+      </div>
+      <div>
+        <strong>{{ formatFirstOrderRate(summary.days30) }}</strong>
+        <span>注册后30日首单率 · {{ firstOrderRateHint(summary.days30) }}</span>
+      </div>
+    </div>
     <LoadingSpinner v-if="loading" />
     <template v-else>
       <div class="table-container">
@@ -21,11 +32,13 @@
             <th>预计毛利(¥)</th>
             <th>订单量</th>
             <th>新增用户</th>
+            <th>7日首单率</th>
+            <th>30日首单率</th>
             <th></th>
           </tr>
           </thead>
           <tbody>
-          <tr v-if="months.length === 0"><td colspan="8">这个范围内没有订单</td></tr>
+          <tr v-if="months.length === 0"><td colspan="10">这个范围内没有订单</td></tr>
           <tr v-for="row in months" :key="row.month">
             <td>{{ row.month }}</td>
             <td>{{ row.commission }}</td>
@@ -34,6 +47,8 @@
             <td>{{ row.profit }}</td>
             <td>{{ row.orders }}</td>
             <td>{{ row.users }}</td>
+            <td :title="firstOrderRateHint(row.first_order_7d)">{{ formatFirstOrderRate(row.first_order_7d) }}</td>
+            <td :title="firstOrderRateHint(row.first_order_30d)">{{ formatFirstOrderRate(row.first_order_30d) }}</td>
             <td><router-link :to="`/user-orders?from=${row.month}-01&to=${row.month}-31`">订单明细</router-link></td>
           </tr>
           </tbody>
@@ -59,7 +74,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import { getBusinessStats } from '@/api/index.js'
+import { getBusinessStats, getFirstOrderRates } from '@/api/index.js'
+import { firstOrderRateHint, formatFirstOrderRate } from '@/utils/firstOrderRates.js'
 import { rangeBounds } from '@/utils/range.js'
 
 const initial = rangeBounds('month')
@@ -68,14 +84,43 @@ const to = ref(initial.to)
 const loading = ref(false)
 const months = ref([])
 const vips = ref([])
+const summary = ref(null)
 
 const formatRate = (rate) => `${Math.round(Number(rate) * 1000) / 10}%`
 
 const load = async () => {
   loading.value = true
   try {
-    const res = await getBusinessStats({ from: from.value, to: to.value })
-    months.value = res.data.months
+    const query = { from: from.value, to: to.value }
+    const [res, rateRes] = await Promise.all([
+      getBusinessStats(query),
+      getFirstOrderRates(query).catch(() => ({ data: null })),
+    ])
+    const rateByMonth = new Map((rateRes.data?.months || []).map((row) => [row.month, row]))
+    months.value = (res.data.months || []).map((row) => ({
+      ...row,
+      first_order_7d: row.first_order_7d || rateByMonth.get(row.month)?.days7 || { converted: 0, cohort: 0, rate: null },
+      first_order_30d: row.first_order_30d || rateByMonth.get(row.month)?.days30 || { converted: 0, cohort: 0, rate: null },
+    }))
+    for (const row of rateRes.data?.months || []) {
+      if (months.value.some((item) => item.month === row.month)) continue
+      months.value.push({
+        month: row.month,
+        commission: '0.00',
+        rebate: '0.00',
+        payout: '0.00',
+        profit: '0.00',
+        orders: 0,
+        users: row.users,
+        first_order_7d: row.days7,
+        first_order_30d: row.days30,
+      })
+    }
+    months.value.sort((a, b) => String(a.month).localeCompare(String(b.month)))
+    summary.value = rateRes.data || {
+      days7: res.data.first_order_7d,
+      days30: res.data.first_order_30d,
+    }
     vips.value = res.data.vips
   } finally {
     loading.value = false
@@ -88,6 +133,11 @@ onMounted(load)
 <style scoped>
 .orders-page { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .filter-toolbar { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
+.hint { margin: 0 0 12px; color: #6b7280; font-size: 13px; }
+.summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.summary div { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; }
+.summary strong { display: block; font-size: 28px; letter-spacing: -0.03em; }
+.summary span { color: #6b7280; font-size: 13px; }
 .search-btn { padding: 8px 14px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
 .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; margin-bottom: 20px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }

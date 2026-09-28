@@ -34,6 +34,7 @@ export const updateAdminUser = pick(mock.updateAdminUser, (data) => post('/users
 export const getOrderDetail = pick(mock.getOrderDetail, (id) => get('/orders/detail', { id }))
 export const getDashboard = pick(mock.getDashboard, (query) => get('/dashboard', query))
 export const getBusinessStats = pick(mock.getBusinessStats, (query) => get('/stats', query))
+export const getFirstOrderRates = pick(mock.getFirstOrderRates, (query) => get('/first-order-rates', query))
 export const getPromotions = pick(mock.getPromotions, () => get('/promotions'))
 export const previewPromotion = pick(mock.previewPromotion, (query) => get('/promotions/preview', query))
 export const getPromotionDetail = pick(mock.getPromotionDetail, (id) => get('/promotions/detail', { id }))
