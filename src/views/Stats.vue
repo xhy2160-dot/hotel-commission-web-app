@@ -2,7 +2,7 @@
   <div class="orders-page">
     <header class="page-header">
       <h2>经营统计</h2>
-      <p class="note">金额按提交时间归月。佣金收入是各渠道佣金换成人民币后的合计，还没乘会员比例。预计返现是写入订单的人民币应返。实际出款是已打款的提现。预计毛利 = 佣金收入 − 预计返现。</p>
+      <p class="note">佣金收入按 ONYX/TACS 爬虫到账时间归月，原币金额用当前汇率换成人民币（1 人民币兑多少外币，人民币 = 原币 ÷ 汇率），和用户订单脱钩。预计返现、订单量仍按用户订单提交时间。实际出款是已打款的提现。预计毛利 = 佣金收入 − 预计返现。</p>
     </header>
     <div class="filter-toolbar">
       <label>从 <input v-model="from" type="date" /></label>
