@@ -2,7 +2,6 @@
   <div class="orders-page">
     <header class="page-header">
       <h2>经营统计</h2>
-      <p class="note">佣金收入按 ONYX/TACS 爬虫写入时间归月，原币用当前汇率换成人民币。2026-09-03 那次历史导入不计入本月。预计返现、订单量仍按用户订单提交时间。实际出款是已打款的提现。预计毛利 = 佣金收入 − 预计返现。</p>
     </header>
     <div class="filter-toolbar">
       <label>从 <input v-model="from" type="date" /></label>
@@ -41,7 +40,6 @@
         </table>
       </div>
       <h3>会员等级分布</h3>
-      <p class="note">等级名称和返现比例接上后台后读取 site2_app_vip_level。这里的人数是当前全部用户，不随日期范围变化。</p>
       <div class="table-container">
         <table>
           <thead><tr><th>等级</th><th>返现比例</th><th>用户数</th></tr></thead>
@@ -89,7 +87,6 @@ onMounted(load)
 
 <style scoped>
 .orders-page { max-width: 1200px; margin: 0 auto; padding: 24px; }
-.note { color: #6b7280; font-size: 13px; }
 .filter-toolbar { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
 .search-btn { padding: 8px 14px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
 .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; margin-bottom: 20px; }
