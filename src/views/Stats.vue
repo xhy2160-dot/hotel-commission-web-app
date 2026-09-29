@@ -27,15 +27,23 @@
         <span>累计预计毛利</span>
       </div>
     </div>
-    <div v-if="!loading && summary" class="summary summary--rates">
-      <div>
-        <strong>{{ formatFirstOrderRate(summary.days7) }}</strong>
-        <span>注册后7日首单率 · {{ firstOrderRateHint(summary.days7) }}</span>
-      </div>
-      <div>
-        <strong>{{ formatFirstOrderRate(summary.days30) }}</strong>
-        <span>注册后30日首单率 · {{ firstOrderRateHint(summary.days30) }}</span>
-      </div>
+    <div v-if="!loading && summary" class="pies">
+      <PieChart
+          title="注册后7日首单率"
+          subtitle="已满7日观察期的注册用户"
+          :center="formatFirstOrderRate(summary.days7)"
+          :center-hint="firstOrderRateHint(summary.days7)"
+          empty-text="这个范围内没有注册用户"
+          :slices="rateSlices(summary.days7, '#2563eb', '#93c5fd')"
+      />
+      <PieChart
+          title="注册后30日首单率"
+          subtitle="已满30日观察期的注册用户"
+          :center="formatFirstOrderRate(summary.days30)"
+          :center-hint="firstOrderRateHint(summary.days30)"
+          empty-text="这个范围内没有注册用户"
+          :slices="rateSlices(summary.days30, '#d97706', '#fcd34d')"
+      />
     </div>
     <div v-if="!loading && chartMonths.length" class="charts">
       <TrendChart
@@ -128,6 +136,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getBusinessStats, getFirstOrderRates } from '@/api/index.js'
+import PieChart from '@/components/PieChart.vue'
 import TrendChart from '@/components/TrendChart.vue'
 import { firstOrderRateHint, formatFirstOrderRate } from '@/utils/firstOrderRates.js'
 import { eachMonth, lastMonths, monthEnd } from '@/utils/range.js'
@@ -215,6 +224,16 @@ const rateSeries = computed(() => [
   { key: 'd30', label: '30日首单率%', color: '#d97706', values: chartMonths.value.map((row) => percent(row.first_order_30d)) },
 ])
 const percent = (item) => (item && item.cohort && item.rate !== null && item.rate !== undefined ? Math.round(item.rate * 1000) / 10 : null)
+const registeredUsers = computed(() => (summary.value?.months || []).reduce((sum, row) => sum + Number(row.users || 0), 0))
+function rateSlices(item, convertedColor, missedColor) {
+  const converted = Number(item?.converted || 0)
+  const cohort = Number(item?.cohort || 0)
+  return [
+    { key: 'converted', label: '期内首单', value: converted, color: convertedColor },
+    { key: 'missed', label: '期满未下单', value: Math.max(0, cohort - converted), color: missedColor },
+    { key: 'watching', label: '观察中', value: Math.max(0, registeredUsers.value - cohort), color: '#e5e7eb' },
+  ]
+}
 
 const loadLifetime = async () => {
   const res = await getBusinessStats({ from: '1970-01-01' }).catch(() => ({ data: null }))
@@ -278,7 +297,7 @@ onMounted(() => {
 .hint { margin: 0 0 12px; color: #6b7280; font-size: 13px; }
 .summary { display: grid; gap: 12px; margin-bottom: 16px; }
 .summary--money { grid-template-columns: repeat(4, 1fr); }
-.summary--rates { grid-template-columns: 1fr 1fr; }
+.pies { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 .summary div { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; }
 .summary strong { display: block; font-size: 28px; letter-spacing: -0.03em; }
 .summary span { color: #6b7280; font-size: 13px; }
@@ -286,10 +305,10 @@ tfoot td { font-weight: 600; background: #f8fafc; }
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 .charts > :last-child { grid-column: 1 / -1; }
 @media (max-width: 900px) {
-  .charts, .summary--money { grid-template-columns: 1fr 1fr; }
+  .charts, .summary--money, .pies { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 700px) {
-  .summary--money, .summary--rates, .charts { grid-template-columns: 1fr; }
+  .summary--money, .pies, .charts { grid-template-columns: 1fr; }
   .charts > :last-child { grid-column: auto; }
 }
 .search-btn { padding: 8px 14px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
