@@ -184,7 +184,7 @@ module.exports = function registerStats(router) {
                      GROUP BY DATE_FORMAT(FROM_UNIXTIME(create_time),'%Y-%m')`,
                     { replacements: r }
                 )
-                for (const row of rows) if (months.has(row.month)) months.get(row.month).payout += num(row.payout)
+                for (const row of rows) if (row.month) ensure(row.month).payout += num(row.payout)
             } catch (error) { console.error(error) }
             try {
                 const [rows] = await sequelize.query(
@@ -193,7 +193,7 @@ module.exports = function registerStats(router) {
                      GROUP BY DATE_FORMAT(created_at,'%Y-%m')`,
                     { replacements: r }
                 )
-                for (const row of rows) if (months.has(row.month)) months.get(row.month).payout += num(row.payout)
+                for (const row of rows) if (row.month) ensure(row.month).payout += num(row.payout)
             } catch (error) { console.error(error) }
 
             const rates = await loadRates(sequelize)

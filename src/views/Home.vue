@@ -60,10 +60,10 @@
           <p v-else class="funds__hint">正在读取微信商户账户</p>
           <em v-if="wxBalanceHint">{{ wxBalanceHint }}</em>
         </div>
-        <router-link to="/stats" class="funds__stat">
+        <router-link :to="{ path: '/stats', query: { from: bounds.from, to: bounds.to } }" class="funds__stat">
           <h3>已获得佣金</h3>
-          <strong>¥{{ formatYuan(commission.total) }}</strong>
-          <em>本期 ¥{{ formatYuan(commission.period) }} · {{ rangeLabel }}</em>
+          <strong>¥{{ formatYuan(commission) }}</strong>
+          <em>{{ rangeLabel }}</em>
         </router-link>
       </div>
     </section>
@@ -137,7 +137,7 @@ const wxBalance = ref({
   source: '',
   error: '',
 })
-const commission = ref({ period: null, total: null })
+const commission = ref(null)
 
 const bounds = computed(() => rangeBounds(range.value))
 const chartBounds = computed(() => (range.value === 'today' ? rangeBounds('last14') : bounds.value))
@@ -240,30 +240,26 @@ async function loadDashboard() {
   }
   try {
     const allTime = { from: '1970-01-01', to: bounds.value.to }
-    const [res, seriesRes, rateRes, pendingRes, statsRes, allStatsRes] = await Promise.all([
+    const [res, seriesRes, rateRes, pendingRes, statsRes] = await Promise.all([
       getDashboard(bounds.value),
       getDashboardSeries(chartBounds.value).catch(() => ({ data: null })),
       getFirstOrderRates().catch(() => ({ data: null })),
       getDashboard(allTime).catch(() => ({ data: null })),
       getBusinessStats(bounds.value).catch(() => ({ data: null })),
-      getBusinessStats(allTime).catch(() => ({ data: null })),
     ])
     if (requestId !== loadId) return
     const period = res?.data || {}
     const pending = pendingRes?.data || period
-    commission.value = {
-      period: sumCommission(statsRes),
-      total: sumCommission(allStatsRes),
-    }
+    commission.value = sumCommission(statsRes)
     counts.value = {
       ...period,
       cashbackOrders: period.cashbackOrders || 0,
       pendingWithdrawals: pending.pendingWithdrawals || 0,
       pendingAppeals: pending.pendingAppeals || 0,
-      firstOrder7d: rateRes.data?.days7 || period.first_order_7d || null,
-      firstOrder30d: rateRes.data?.days30 || period.first_order_30d || null,
-      totals: seriesRes.data?.totals || { users: 0, orders: 0 },
-      series: seriesRes.data?.series || [],
+      firstOrder7d: rateRes?.data?.days7 || period.first_order_7d || null,
+      firstOrder30d: rateRes?.data?.days30 || period.first_order_30d || null,
+      totals: seriesRes?.data?.totals || { users: 0, orders: 0 },
+      series: seriesRes?.data?.series || [],
     }
   } catch {
     // Keep last counts if the session cookie is still settling.

@@ -556,7 +556,7 @@ export const getBusinessStats = async (query = {}) => {
     if (!paid) continue
     const stamp = item.paid_at || item.at
     const month = String(stamp).slice(0, 7)
-    if (!months.has(month)) continue
+    if (!months.has(month)) months.set(month, { month, commission: 0, rebate: 0, payout: 0, orders: 0, users: 0 })
     months.get(month).payout += Number(item.amount || 0)
   }
   const firstOrder = buildFirstOrderRates(users, orders, { from, to })

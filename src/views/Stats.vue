@@ -8,8 +8,26 @@
       <label>到 <input v-model="to" type="date" /></label>
       <button class="search-btn" @click="load">查询</button>
     </div>
-    <p class="hint">7日 / 30日首单率只统计注册已满观察期的用户；首单是该用户提交的第一笔酒店订单。</p>
-    <div v-if="!loading && summary" class="summary">
+    <p class="hint">7日 / 30日首单率只统计注册已满观察期的用户；首单是该用户提交的第一笔酒店订单。累计金额是上线以来全部月份的合计，表格是当前查询区间。</p>
+    <div class="summary summary--money">
+      <div>
+        <strong>¥{{ formatYuan(lifetime.commission) }}</strong>
+        <span>累计佣金收入</span>
+      </div>
+      <div>
+        <strong>¥{{ formatYuan(lifetime.rebate) }}</strong>
+        <span>累计预计返现</span>
+      </div>
+      <div>
+        <strong>¥{{ formatYuan(lifetime.payout) }}</strong>
+        <span>累计实际出款</span>
+      </div>
+      <div>
+        <strong>¥{{ formatYuan(lifetime.profit) }}</strong>
+        <span>累计预计毛利</span>
+      </div>
+    </div>
+    <div v-if="!loading && summary" class="summary summary--rates">
       <div>
         <strong>{{ formatFirstOrderRate(summary.days7) }}</strong>
         <span>注册后7日首单率 · {{ firstOrderRateHint(summary.days7) }}</span>
@@ -72,6 +90,20 @@
             <td><router-link :to="`/user-orders?from=${row.month}-01&to=${monthEnd(row.month)}`">订单明细</router-link></td>
           </tr>
           </tbody>
+          <tfoot v-if="months.length">
+            <tr>
+              <td>区间合计</td>
+              <td>{{ formatFixed(rangeTotals.commission) }}</td>
+              <td>{{ formatFixed(rangeTotals.rebate) }}</td>
+              <td>{{ formatFixed(rangeTotals.payout) }}</td>
+              <td>{{ formatFixed(rangeTotals.profit) }}</td>
+              <td>{{ rangeTotals.orders }}</td>
+              <td>{{ rangeTotals.users }}</td>
+              <td :title="firstOrderRateHint(rangeTotals.first_order_7d)">{{ formatFirstOrderRate(rangeTotals.first_order_7d) }}</td>
+              <td :title="firstOrderRateHint(rangeTotals.first_order_30d)">{{ formatFirstOrderRate(rangeTotals.first_order_30d) }}</td>
+              <td></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       <h3>会员等级分布</h3>
@@ -93,19 +125,27 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getBusinessStats, getFirstOrderRates } from '@/api/index.js'
 import TrendChart from '@/components/TrendChart.vue'
 import { firstOrderRateHint, formatFirstOrderRate } from '@/utils/firstOrderRates.js'
 import { eachMonth, lastMonths, monthEnd } from '@/utils/range.js'
 
+const route = useRoute()
 const initial = lastMonths(6)
-const from = ref(initial.from)
-const to = ref(initial.to)
+const from = ref(typeof route.query.from === 'string' ? route.query.from : initial.from)
+const to = ref(typeof route.query.to === 'string' ? route.query.to : initial.to)
 const loading = ref(false)
 const months = ref([])
 const vips = ref([])
 const summary = ref(null)
+const lifetime = ref({
+  commission: null,
+  rebate: null,
+  payout: null,
+  profit: null,
+})
 
 const emptyMonth = (month) => ({
   month,
@@ -120,6 +160,43 @@ const emptyMonth = (month) => ({
 })
 
 const formatRate = (rate) => `${Math.round(Number(rate) * 1000) / 10}%`
+function formatYuan(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+function formatFixed(value) {
+  return Number(value || 0).toFixed(2)
+}
+function sumMoney(rows) {
+  return rows.reduce((acc, row) => ({
+    commission: acc.commission + Number(row.commission || 0),
+    rebate: acc.rebate + Number(row.rebate || 0),
+    payout: acc.payout + Number(row.payout || 0),
+    profit: acc.profit + Number(row.profit || 0),
+    orders: acc.orders + Number(row.orders || 0),
+    users: acc.users + Number(row.users || 0),
+  }), { commission: 0, rebate: 0, payout: 0, profit: 0, orders: 0, users: 0 })
+}
+function sumRate(rows, key) {
+  let converted = 0
+  let cohort = 0
+  for (const row of rows) {
+    const item = row[key]
+    if (!item) continue
+    converted += Number(item.converted || 0)
+    cohort += Number(item.cohort || 0)
+  }
+  return {
+    converted,
+    cohort,
+    rate: cohort > 0 ? Math.round((converted / cohort) * 1000) / 1000 : null,
+  }
+}
+const rangeTotals = computed(() => ({
+  ...sumMoney(months.value),
+  first_order_7d: sumRate(months.value, 'first_order_7d'),
+  first_order_30d: sumRate(months.value, 'first_order_30d'),
+}))
 const chartMonths = computed(() => {
   const byMonth = new Map(months.value.map((row) => [row.month, row]))
   return eachMonth(from.value, to.value).map((month) => byMonth.get(month) || emptyMonth(month))
@@ -139,21 +216,32 @@ const rateSeries = computed(() => [
 ])
 const percent = (item) => (item && item.cohort && item.rate !== null && item.rate !== undefined ? Math.round(item.rate * 1000) / 10 : null)
 
+const loadLifetime = async () => {
+  const res = await getBusinessStats({ from: '1970-01-01' }).catch(() => ({ data: null }))
+  const totals = sumMoney(res?.data?.months || [])
+  lifetime.value = {
+    commission: res?.data?.months ? totals.commission : null,
+    rebate: res?.data?.months ? totals.rebate : null,
+    payout: res?.data?.months ? totals.payout : null,
+    profit: res?.data?.months ? totals.profit : null,
+  }
+}
+
 const load = async () => {
   loading.value = true
   try {
     const query = { from: from.value, to: to.value }
     const [res, rateRes] = await Promise.all([
-      getBusinessStats(query),
+      getBusinessStats(query).catch(() => ({ data: null })),
       getFirstOrderRates(query).catch(() => ({ data: null })),
     ])
-    const rateByMonth = new Map((rateRes.data?.months || []).map((row) => [row.month, row]))
-    months.value = (res.data.months || []).map((row) => ({
+    const rateByMonth = new Map((rateRes?.data?.months || []).map((row) => [row.month, row]))
+    months.value = (res?.data?.months || []).map((row) => ({
       ...row,
       first_order_7d: row.first_order_7d || rateByMonth.get(row.month)?.days7 || { converted: 0, cohort: 0, rate: null },
       first_order_30d: row.first_order_30d || rateByMonth.get(row.month)?.days30 || { converted: 0, cohort: 0, rate: null },
     }))
-    for (const row of rateRes.data?.months || []) {
+    for (const row of rateRes?.data?.months || []) {
       if (months.value.some((item) => item.month === row.month)) continue
       months.value.push({
         month: row.month,
@@ -168,30 +256,42 @@ const load = async () => {
       })
     }
     months.value.sort((a, b) => String(a.month).localeCompare(String(b.month)))
-    summary.value = rateRes.data || {
-      days7: res.data.first_order_7d,
-      days30: res.data.first_order_30d,
+    summary.value = rateRes?.data || {
+      days7: res?.data?.first_order_7d || null,
+      days30: res?.data?.first_order_30d || null,
     }
-    vips.value = res.data.vips
+    vips.value = res?.data?.vips || []
   } finally {
     loading.value = false
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  loadLifetime()
+  load()
+})
 </script>
 
 <style scoped>
 .orders-page { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .filter-toolbar { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
 .hint { margin: 0 0 12px; color: #6b7280; font-size: 13px; }
-.summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.summary { display: grid; gap: 12px; margin-bottom: 16px; }
+.summary--money { grid-template-columns: repeat(4, 1fr); }
+.summary--rates { grid-template-columns: 1fr 1fr; }
 .summary div { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; }
 .summary strong { display: block; font-size: 28px; letter-spacing: -0.03em; }
 .summary span { color: #6b7280; font-size: 13px; }
+tfoot td { font-weight: 600; background: #f8fafc; }
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 .charts > :last-child { grid-column: 1 / -1; }
-@media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .charts, .summary--money { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+  .summary--money, .summary--rates, .charts { grid-template-columns: 1fr; }
+  .charts > :last-child { grid-column: auto; }
+}
 .search-btn { padding: 8px 14px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
 .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; margin-bottom: 20px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
