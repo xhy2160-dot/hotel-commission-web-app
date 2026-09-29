@@ -18,7 +18,9 @@ const ACCOUNT_TYPES = [
     { id: 'FEES', label: '手续费账户' }
 ]
 const BILL_LOOKBACK_DAYS = 21
+const EXTRA_DAYS_AFTER_HIT = 7
 const CACHE_MS = 15 * 60 * 1000
+const REQUEST_TIMEOUT_MS = 12000
 
 let cache = { at: 0, data: null }
 
@@ -45,10 +47,14 @@ function signRequest(cfg, method, urlPath) {
     return `WECHATPAY2-SHA256-RSA2048 mchid="${cfg.mchid}",nonce_str="${nonce}",timestamp="${timestamp}",serial_no="${cfg.serial}",signature="${signature}"`
 }
 
-function wechatRequest(cfg, urlPath, accept) {
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function wechatRequest(cfg, urlPath, accept, hostname) {
     return new Promise((resolve, reject) => {
         const req = https.request({
-            hostname: 'api.mch.weixin.qq.com',
+            hostname: hostname || 'api.mch.weixin.qq.com',
             path: urlPath,
             method: 'GET',
             headers: {
@@ -66,6 +72,7 @@ function wechatRequest(cfg, urlPath, accept) {
                 resolve({ status: res.statusCode, body, raw })
             })
         })
+        req.setTimeout(REQUEST_TIMEOUT_MS, () => req.destroy(new Error('timeout')))
         req.on('error', reject)
         req.end()
     })
@@ -83,38 +90,45 @@ function maskMchid(mchid) {
 }
 
 function beijingDates(days) {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date())
+    const [year, month, day] = today.split('-').map(Number)
     const dates = []
     for (let i = 1; i <= days; i++) {
-        const date = new Date(Date.now() - i * 86400000)
-        dates.push(new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Asia/Shanghai',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        }).format(date))
+        dates.push(new Date(Date.UTC(year, month - 1, day - i)).toISOString().slice(0, 10))
     }
     return dates
 }
 
+function splitBillColumns(line) {
+    const trimmed = line.replace(/^\uFEFF/, '').trim()
+    if (!trimmed) return []
+    if (trimmed.includes('`')) return trimmed.replace(/^`/, '').split(/,`/)
+    return trimmed.split(',')
+}
+
 function parseFundflowBalance(buf) {
-    let text = buf
-    if (buf[0] === 0x1f && buf[1] === 0x8b) text = zlib.gunzipSync(buf)
-    const lines = text.toString('utf8').replace(/^\uFEFF/, '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    let bytes = buf
+    if (buf[0] === 0x1f && buf[1] === 0x8b) bytes = zlib.gunzipSync(buf)
+    const lines = bytes.toString('utf8').replace(/^\uFEFF/, '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     if (!lines.length) return null
-    const header = lines[0].replace(/`/g, '').split(',')
-    const balanceIndex = header.findIndex((col) => col.includes('账户结余'))
+    const header = splitBillColumns(lines[0])
+    const balanceIndex = header.findIndex((col) => String(col).includes('账户结余'))
     if (balanceIndex < 0) return null
     let last = null
     for (const line of lines.slice(1)) {
-        const plain = line.replace(/`/g, '')
-        if (plain.startsWith('资金流水总笔数')) break
-        const cols = plain.split(',')
+        const cols = splitBillColumns(line)
+        if (String(cols[0] || '').startsWith('资金流水总笔数')) break
         if (cols[balanceIndex] === undefined || cols[balanceIndex] === '') continue
         const amount = Number(cols[balanceIndex])
         if (!Number.isFinite(amount)) continue
         last = amount
     }
     return last
+}
+
+function isLimited(result) {
+    const code = result && result.body && result.body.code
+    return result.status === 429 || code === 'FREQUENCY_LIMITED'
 }
 
 async function queryRealtime(cfg) {
@@ -143,78 +157,109 @@ async function queryRealtime(cfg) {
     return accounts
 }
 
-async function queryLatestBill(cfg, accountType, dates) {
-    for (const date of dates) {
-        const apply = await wechatRequest(cfg, `/v3/bill/fundflowbill?bill_date=${date}&account_type=${accountType}`)
-        if (apply.status !== 200 || !apply.body || !apply.body.download_url) continue
-        let urlPath = apply.body.download_url
-        try {
-            const parsed = new URL(apply.body.download_url)
-            urlPath = `${parsed.pathname}${parsed.search}`
-        } catch (_) {}
-        const file = await wechatRequest(cfg, urlPath, '*/*')
-        if (file.status !== 200) continue
-        const balance = parseFundflowBalance(file.raw)
-        if (balance === null) continue
-        return { date, balance }
+async function downloadBillBalance(cfg, apply) {
+    const parsed = new URL(apply.body.download_url)
+    const file = await wechatRequest(cfg, `${parsed.pathname}${parsed.search}`, '*/*', parsed.hostname)
+    if (file.status !== 200) return null
+    return parseFundflowBalance(file.raw)
+}
+
+async function queryBillOnDate(cfg, date, accountType) {
+    const urlPath = `/v3/bill/fundflowbill?bill_date=${date}&account_type=${accountType}`
+    let apply = await wechatRequest(cfg, urlPath)
+    if (isLimited(apply)) {
+        await sleep(500)
+        apply = await wechatRequest(cfg, urlPath)
     }
-    return null
+    if (isLimited(apply)) return { limited: true, found: null }
+    if (apply.status !== 200 || !apply.body || !apply.body.download_url) return { limited: false, found: null }
+    const balance = await downloadBillBalance(cfg, apply)
+    if (balance === null) return { limited: false, found: null }
+    return { limited: false, found: { date, balance } }
 }
 
 async function queryFromBills(cfg) {
     const dates = beijingDates(BILL_LOOKBACK_DAYS)
-    const accounts = []
-    for (const type of ACCOUNT_TYPES) {
-        const found = await queryLatestBill(cfg, type.id, dates)
-        accounts.push({
+    const found = new Map()
+    let limited = false
+    let firstHit = -1
+    for (let index = 0; index < dates.length; index++) {
+        if (firstHit >= 0 && index > firstHit + EXTRA_DAYS_AFTER_HIT) break
+        for (const type of ACCOUNT_TYPES) {
+            if (found.has(type.id)) continue
+            const result = await queryBillOnDate(cfg, dates[index], type.id)
+            if (result.limited) limited = true
+            if (result.found) {
+                found.set(type.id, result.found)
+                if (firstHit < 0) firstHit = index
+            }
+        }
+        if (ACCOUNT_TYPES.every((type) => found.has(type.id))) break
+    }
+    const accounts = ACCOUNT_TYPES.map((type) => {
+        const item = found.get(type.id)
+        return {
             type: type.id,
             label: type.label,
-            available: found ? found.balance : null,
+            available: item ? item.balance : null,
             pending: null,
-            as_of: found ? found.date : null,
-            source: found ? 'fundflowbill' : undefined
-        })
-    }
-    return accounts
+            as_of: item ? item.date : null,
+            source: item ? 'fundflowbill' : undefined
+        }
+    })
+    return { accounts, limited }
 }
 
 function noAuth(accounts) {
     return accounts.length && accounts.every((item) => item.error === 'NO_AUTH' || String(item.error || '').includes('没有使用该接口的权限'))
 }
 
-async function loadBalance(cfg) {
-    if (cache.data && Date.now() - cache.at < CACHE_MS) return cache.data
-    const realtime = await queryRealtime(cfg)
-    const usableRealtime = realtime.find((item) => item.available !== null)
-    if (usableRealtime) {
-        const data = {
-            mchid: maskMchid(cfg.mchid),
-            queried_at: new Date().toISOString(),
-            available: usableRealtime.available,
-            pending: usableRealtime.pending,
-            source: 'realtime',
-            accounts: realtime
-        }
-        cache = { at: Date.now(), data }
-        return data
-    }
-    const bills = noAuth(realtime) ? await queryFromBills(cfg) : realtime
-    const usableBill = bills.find((item) => item.available !== null)
-    const data = {
+function packRealtime(cfg, realtime) {
+    const usable = realtime.find((item) => item.available !== null)
+    return {
         mchid: maskMchid(cfg.mchid),
         queried_at: new Date().toISOString(),
-        available: usableBill ? usableBill.available : null,
-        pending: usableBill ? usableBill.pending : null,
-        as_of: usableBill ? usableBill.as_of : undefined,
-        source: usableBill ? 'fundflowbill' : undefined,
+        available: usable.available,
+        pending: usable.pending,
+        source: 'realtime',
+        accounts: realtime
+    }
+}
+
+function packBills(cfg, bills, realtime) {
+    const usable = bills.find((item) => item.available !== null)
+    return {
+        mchid: maskMchid(cfg.mchid),
+        queried_at: new Date().toISOString(),
+        available: usable ? usable.available : null,
+        pending: usable ? usable.pending : null,
+        as_of: usable ? usable.as_of : undefined,
+        source: usable ? 'fundflowbill' : undefined,
         accounts: bills,
-        message: usableBill
+        message: usable
             ? undefined
             : (noAuth(realtime)
                 ? '普通商户没有实时余额查询接口，最近也没有资金账单'
                 : (realtime[0] && realtime[0].error))
     }
-    cache = { at: Date.now(), data }
+}
+
+async function loadBalance(cfg) {
+    if (cache.data && Date.now() - cache.at < CACHE_MS) return cache.data
+    const realtime = await queryRealtime(cfg)
+    if (realtime.find((item) => item.available !== null)) {
+        const data = packRealtime(cfg, realtime)
+        cache = { at: Date.now(), data }
+        return data
+    }
+    if (!noAuth(realtime)) {
+        const data = packBills(cfg, realtime, realtime)
+        cache = { at: Date.now(), data }
+        return data
+    }
+    const { accounts, limited } = await queryFromBills(cfg)
+    const data = packBills(cfg, accounts, realtime)
+    if (data.available !== null || !limited) cache = { at: Date.now(), data }
     return data
 }
 

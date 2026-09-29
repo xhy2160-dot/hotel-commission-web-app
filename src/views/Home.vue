@@ -57,7 +57,7 @@
           <span>不可用</span>
           <strong>¥{{ formatYuan(wxBalance.pending) }}</strong>
         </div>
-        <div v-for="item in wxBalance.accounts.filter((row) => row.available !== null)" :key="item.type">
+        <div v-for="item in wxExtraAccounts" :key="item.type">
           <span>{{ item.label }}</span>
           <strong>¥{{ formatYuan(item.available) }}</strong>
         </div>
@@ -202,6 +202,30 @@ const wxBalanceHint = computed(() => {
   return ''
 })
 
+const wxExtraAccounts = computed(() => {
+  const rows = wxBalance.value.accounts || []
+  const primary = rows.find((row) => row.available === wxBalance.value.available)
+  return rows.filter((row) => row.available !== null && row !== primary)
+})
+
+function applyWechat(wxRes) {
+  if (wxRes?.error) {
+    wxBalance.value = { ...wxBalance.value, error: wechatErrorText(wxRes.error) }
+    return
+  }
+  const wx = wxRes?.data || {}
+  wxBalance.value = {
+    mchid: wx.mchid || '',
+    available: wx.available ?? null,
+    pending: wx.pending ?? null,
+    accounts: wx.accounts || [],
+    queried_at: wx.queried_at || '',
+    as_of: wx.as_of || '',
+    source: wx.source || '',
+    error: wx.message ? wechatErrorText(new Error(wx.message)) : '',
+  }
+}
+
 const todos = computed(() => [
   { label: '待处理提现', value: counts.value.pendingWithdrawals, to: '/withdrawals?pending=1' },
   { label: '待处理申诉', value: counts.value.pendingAppeals, to: '/user-appeals?pending=1' },
@@ -209,16 +233,24 @@ const todos = computed(() => [
 ])
 
 let loadId = 0
+let wxStarted = false
+async function loadWechat() {
+  const wxRes = await getWechatMerchantBalance().catch((error) => ({ error }))
+  applyWechat(wxRes)
+}
 async function loadDashboard() {
   const requestId = ++loadId
+  if (!wxStarted) {
+    wxStarted = true
+    loadWechat().catch(() => {})
+  }
   try {
     const allTime = { from: '1970-01-01', to: bounds.value.to }
-    const [res, seriesRes, rateRes, pendingRes, wxRes] = await Promise.all([
+    const [res, seriesRes, rateRes, pendingRes] = await Promise.all([
       getDashboard(bounds.value),
       getDashboardSeries(chartBounds.value).catch(() => ({ data: null })),
       getFirstOrderRates().catch(() => ({ data: null })),
       getDashboard(allTime).catch(() => ({ data: null })),
-      getWechatMerchantBalance().catch((error) => ({ error })),
     ])
     if (requestId !== loadId) return
     const period = res?.data || {}
@@ -232,21 +264,6 @@ async function loadDashboard() {
       firstOrder30d: rateRes.data?.days30 || period.first_order_30d || null,
       totals: seriesRes.data?.totals || { users: 0, orders: 0 },
       series: seriesRes.data?.series || [],
-    }
-    if (wxRes?.error) {
-      wxBalance.value = { ...wxBalance.value, error: wechatErrorText(wxRes.error) }
-    } else {
-      const wx = wxRes?.data || {}
-      wxBalance.value = {
-        mchid: wx.mchid || '',
-        available: wx.available ?? null,
-        pending: wx.pending ?? null,
-        accounts: wx.accounts || [],
-        queried_at: wx.queried_at || '',
-        as_of: wx.as_of || '',
-        source: wx.source || '',
-        error: wx.message ? wechatErrorText(new Error(wx.message)) : '',
-      }
     }
   } catch {
     // Keep last counts if the session cookie is still settling.
