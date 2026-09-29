@@ -19,7 +19,15 @@
       </g>
       <g v-for="line in plotted" :key="line.key">
         <path v-if="line.area" :d="line.area" :fill="line.color" class="chart__area" />
-        <path :d="line.path" :stroke="line.color" class="chart__line" />
+        <path v-if="line.dots.length > 1" :d="line.path" :stroke="line.color" class="chart__line" />
+        <circle
+            v-for="(point, index) in line.dots"
+            :key="`${line.key}-${index}`"
+            :cx="point.x"
+            :cy="point.y"
+            r="3.5"
+            :fill="line.color"
+        />
       </g>
       <g v-for="label in xLabels" :key="`${label.index}-${label.text}`">
         <text :x="xAt(label.index)" :y="height - 10" class="chart__xlabel">{{ label.text }}</text>
@@ -92,8 +100,9 @@ function formatLabel(label) {
 }
 
 function xAt(index) {
-  const count = Math.max(props.labels.length - 1, 1)
-  return pad.left + (index / count) * (width - pad.left - pad.right)
+  const count = props.labels.length
+  if (count <= 1) return pad.left + (width - pad.left - pad.right) / 2
+  return pad.left + (index / (count - 1)) * (width - pad.left - pad.right)
 }
 
 function yAt(value) {
@@ -102,14 +111,14 @@ function yAt(value) {
 }
 
 const plotted = computed(() => lines.value.map((line) => {
-  const points = (line.values || []).map((value, index) => `${xAt(index)},${yAt(value)}`)
-  const path = points.length ? `M${points.join(' L')}` : ''
-  const last = points[points.length - 1]
-  const first = points[0]
+  const dots = (line.values || []).map((value, index) => ({ x: xAt(index), y: yAt(value) }))
+  const path = dots.length ? `M${dots.map((point) => `${point.x},${point.y}`).join(' L')}` : ''
+  const last = dots[dots.length - 1]
+  const first = dots[0]
   const area = props.fill && first && last
-    ? `${path} L${xAt((line.values.length || 1) - 1)},${height - pad.bottom} L${xAt(0)},${height - pad.bottom} Z`
+    ? `${path} L${last.x},${height - pad.bottom} L${first.x},${height - pad.bottom} Z`
     : ''
-  return { ...line, path, area }
+  return { ...line, path, area, dots }
 }))
 </script>
 

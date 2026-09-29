@@ -19,7 +19,7 @@
         <span>注册后30日首单率 · {{ firstOrderRateHint(summary.days30) }}</span>
       </div>
     </div>
-    <div v-if="!loading && months.length" class="charts">
+    <div v-if="!loading && chartMonths.length" class="charts">
       <TrendChart
           title="月度佣金"
           subtitle="按爬虫入账，单位人民币"
@@ -97,9 +97,9 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getBusinessStats, getFirstOrderRates } from '@/api/index.js'
 import TrendChart from '@/components/TrendChart.vue'
 import { firstOrderRateHint, formatFirstOrderRate } from '@/utils/firstOrderRates.js'
-import { monthEnd, rangeBounds } from '@/utils/range.js'
+import { eachMonth, lastMonths, monthEnd } from '@/utils/range.js'
 
-const initial = rangeBounds('month')
+const initial = lastMonths(6)
 const from = ref(initial.from)
 const to = ref(initial.to)
 const loading = ref(false)
@@ -107,19 +107,35 @@ const months = ref([])
 const vips = ref([])
 const summary = ref(null)
 
+const emptyMonth = (month) => ({
+  month,
+  commission: '0.00',
+  rebate: '0.00',
+  payout: '0.00',
+  profit: '0.00',
+  orders: 0,
+  users: 0,
+  first_order_7d: { converted: 0, cohort: 0, rate: null },
+  first_order_30d: { converted: 0, cohort: 0, rate: null },
+})
+
 const formatRate = (rate) => `${Math.round(Number(rate) * 1000) / 10}%`
-const monthLabels = computed(() => months.value.map((row) => row.month))
+const chartMonths = computed(() => {
+  const byMonth = new Map(months.value.map((row) => [row.month, row]))
+  return eachMonth(from.value, to.value).map((month) => byMonth.get(month) || emptyMonth(month))
+})
+const monthLabels = computed(() => chartMonths.value.map((row) => row.month))
 const moneySeries = computed(() => [
-  { key: 'commission', label: '佣金收入', color: '#2563eb', values: months.value.map((row) => Number(row.commission) || 0) },
-  { key: 'rebate', label: '预计返现', color: '#d97706', values: months.value.map((row) => Number(row.rebate) || 0) },
+  { key: 'commission', label: '佣金收入', color: '#2563eb', values: chartMonths.value.map((row) => Number(row.commission) || 0) },
+  { key: 'rebate', label: '预计返现', color: '#d97706', values: chartMonths.value.map((row) => Number(row.rebate) || 0) },
 ])
 const countSeries = computed(() => [
-  { key: 'users', label: '新增用户', color: '#2563eb', values: months.value.map((row) => Number(row.users) || 0) },
-  { key: 'orders', label: '订单量', color: '#0f766e', values: months.value.map((row) => Number(row.orders) || 0) },
+  { key: 'users', label: '新增用户', color: '#2563eb', values: chartMonths.value.map((row) => Number(row.users) || 0) },
+  { key: 'orders', label: '订单量', color: '#0f766e', values: chartMonths.value.map((row) => Number(row.orders) || 0) },
 ])
 const rateSeries = computed(() => [
-  { key: 'd7', label: '7日首单率%', color: '#2563eb', values: months.value.map((row) => percent(row.first_order_7d)) },
-  { key: 'd30', label: '30日首单率%', color: '#d97706', values: months.value.map((row) => percent(row.first_order_30d)) },
+  { key: 'd7', label: '7日首单率%', color: '#2563eb', values: chartMonths.value.map((row) => percent(row.first_order_7d)) },
+  { key: 'd30', label: '30日首单率%', color: '#d97706', values: chartMonths.value.map((row) => percent(row.first_order_30d)) },
 ])
 const percent = (item) => (item && item.rate !== null && item.rate !== undefined ? Math.round(item.rate * 1000) / 10 : 0)
 

@@ -61,6 +61,32 @@ export function monthEnd(month) {
   return `${month}-${String(last).padStart(2, '0')}`
 }
 
+export function eachMonth(from, to) {
+  const start = String(from || '').slice(0, 7)
+  const end = String(to || '').slice(0, 7)
+  if (!/^\d{4}-\d{2}$/.test(start) || !/^\d{4}-\d{2}$/.test(end) || start > end) return []
+  const months = []
+  let [year, month] = start.split('-').map(Number)
+  const [endYear, endMonth] = end.split('-').map(Number)
+  while (year < endYear || (year === endYear && month <= endMonth)) {
+    months.push(`${year}-${String(month).padStart(2, '0')}`)
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+  }
+  return months
+}
+
+export function lastMonths(count, now = new Date()) {
+  const to = startOfDay(now)
+  const from = startOfDay(now)
+  from.setDate(1)
+  from.setMonth(from.getMonth() - (Math.max(Number(count) || 1, 1) - 1))
+  return { from: formatDay(from), to: formatDay(to) }
+}
+
 export function inDayRange(value, from, to) {
   const date = parseTime(value)
   if (!date) return false
