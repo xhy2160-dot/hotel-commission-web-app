@@ -137,7 +137,7 @@ const rateSeries = computed(() => [
   { key: 'd7', label: '7日首单率%', color: '#2563eb', values: chartMonths.value.map((row) => percent(row.first_order_7d)) },
   { key: 'd30', label: '30日首单率%', color: '#d97706', values: chartMonths.value.map((row) => percent(row.first_order_30d)) },
 ])
-const percent = (item) => (item && item.rate !== null && item.rate !== undefined ? Math.round(item.rate * 1000) / 10 : 0)
+const percent = (item) => (item && item.cohort && item.rate !== null && item.rate !== undefined ? Math.round(item.rate * 1000) / 10 : null)
 
 const load = async () => {
   loading.value = true

@@ -21,7 +21,10 @@
         <span>{{ item.label }}</span>
         <strong>{{ item.value }}</strong>
         <svg v-if="item.spark.length" viewBox="0 0 80 28" class="spark">
-          <polyline :points="item.spark" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <polyline :points="item.spark.map((point) => `${point.x},${point.y}`).join(' ')" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle v-for="point in item.spark" :key="`${item.label}-${point.day}`" :cx="point.x" :cy="point.y" r="1.8" fill="currentColor">
+            <title>{{ point.day }}：{{ point.value }}</title>
+          </circle>
         </svg>
       </router-link>
     </div>
@@ -117,21 +120,23 @@ const cumSeries = computed(() => [
   { key: 'orders', label: '累计订单', color: '#0f766e', values: points.value.map((row) => row.orders_cum) },
 ])
 
-function spark(values) {
-  if (!values.length) return ''
+function spark(rows, key) {
+  const values = rows.map((row) => Number(row[key]) || 0)
+  if (!values.length) return []
   const max = Math.max(...values, 1)
-  return values.map((value, index) => {
-    const x = values.length === 1 ? 40 : (index / (values.length - 1)) * 80
-    const y = 26 - (Number(value) / max) * 22
-    return `${x},${y}`
-  }).join(' ')
+  return values.map((value, index) => ({
+    x: values.length === 1 ? 40 : (index / (values.length - 1)) * 80,
+    y: 26 - (value / max) * 22,
+    value,
+    day: rows[index].day,
+  }))
 }
 
 const growth = computed(() => [
-  { label: '新增用户', value: counts.value.newUsers, to: `/users?${query.value}`, spark: spark(points.value.map((row) => row.users)) },
-  { label: '新增订单', value: counts.value.newOrders, to: `/user-orders?${query.value}`, spark: spark(points.value.map((row) => row.orders)) },
-  { label: '累计用户', value: counts.value.totals.users, to: '/users', spark: spark(points.value.map((row) => row.users_cum)) },
-  { label: '累计订单', value: counts.value.totals.orders, to: '/user-orders', spark: spark(points.value.map((row) => row.orders_cum)) },
+  { label: '新增用户', value: counts.value.newUsers, to: `/users?${query.value}`, spark: spark(points.value, 'users') },
+  { label: '新增订单', value: counts.value.newOrders, to: `/user-orders?${query.value}`, spark: spark(points.value, 'orders') },
+  { label: '累计用户', value: counts.value.totals.users, to: '/users', spark: spark(points.value, 'users_cum') },
+  { label: '累计订单', value: counts.value.totals.orders, to: '/user-orders', spark: spark(points.value, 'orders_cum') },
 ])
 const todos = computed(() => [
   { label: '待处理提现', value: counts.value.pendingWithdrawals, to: '/withdrawals?pending=1' },
