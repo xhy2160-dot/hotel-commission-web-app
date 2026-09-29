@@ -46,24 +46,26 @@
     </div>
 
     <section class="panel funds">
-      <h3>微信商户余额</h3>
-      <p v-if="wxBalance.error" class="funds__error">{{ wxBalance.error }}</p>
-      <div v-else-if="wxBalance.available !== null" class="funds__grid">
+      <div class="funds__cols">
         <div>
-          <span>可用余额</span>
-          <strong>¥{{ formatYuan(wxBalance.available) }}</strong>
+          <h3>微信商户余额</h3>
+          <p v-if="wxBalance.error" class="funds__error">{{ wxBalance.error }}</p>
+          <template v-else-if="wxBalance.available !== null">
+            <strong>¥{{ formatYuan(wxBalance.available) }}</strong>
+            <div v-if="wxBalance.pending !== null || wxExtraAccounts.length" class="funds__more">
+              <span v-if="wxBalance.pending !== null">不可用 ¥{{ formatYuan(wxBalance.pending) }}</span>
+              <span v-for="item in wxExtraAccounts" :key="item.type">{{ item.label }} ¥{{ formatYuan(item.available) }}</span>
+            </div>
+          </template>
+          <p v-else class="funds__hint">正在读取微信商户账户</p>
+          <em v-if="wxBalanceHint">{{ wxBalanceHint }}</em>
         </div>
-        <div v-if="wxBalance.pending !== null">
-          <span>不可用</span>
-          <strong>¥{{ formatYuan(wxBalance.pending) }}</strong>
-        </div>
-        <div v-for="item in wxExtraAccounts" :key="item.type">
-          <span>{{ item.label }}</span>
-          <strong>¥{{ formatYuan(item.available) }}</strong>
-        </div>
+        <router-link to="/stats" class="funds__stat">
+          <h3>已获得佣金</h3>
+          <strong>¥{{ formatYuan(commission.total) }}</strong>
+          <em>本期 ¥{{ formatYuan(commission.period) }} · {{ rangeLabel }}</em>
+        </router-link>
       </div>
-      <p v-else class="funds__hint">正在读取微信商户账户</p>
-      <em v-if="wxBalance.mchid">商户号 {{ wxBalance.mchid }}{{ wxBalanceHint }}</em>
     </section>
 
     <div class="panels">
@@ -95,7 +97,7 @@
 import { computed, ref, watch } from 'vue'
 import TrendChart from '@/components/TrendChart.vue'
 import { useAuthStore } from '@/stores/auth.js'
-import { getDashboard, getDashboardSeries, getFirstOrderRates, getWechatMerchantBalance } from '@/api/index.js'
+import { getBusinessStats, getDashboard, getDashboardSeries, getFirstOrderRates, getWechatMerchantBalance } from '@/api/index.js'
 import { formatFirstOrderRate, firstOrderRateHint } from '@/utils/firstOrderRates.js'
 import { rangeBounds } from '@/utils/range.js'
 
@@ -127,7 +129,6 @@ const counts = ref({
   series: [],
 })
 const wxBalance = ref({
-  mchid: '',
   available: null,
   pending: null,
   accounts: [],
@@ -136,6 +137,7 @@ const wxBalance = ref({
   source: '',
   error: '',
 })
+const commission = ref({ period: null, total: null })
 
 const bounds = computed(() => rangeBounds(range.value))
 const chartBounds = computed(() => (range.value === 'today' ? rangeBounds('last14') : bounds.value))
@@ -174,17 +176,10 @@ function formatYuan(value) {
   return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function formatQueryTime(value) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
+function sumCommission(res) {
+  const months = res?.data?.months
+  if (!months) return null
+  return months.reduce((sum, row) => sum + Number(row.commission || 0), 0)
 }
 
 function wechatErrorText(error) {
@@ -196,9 +191,9 @@ function wechatErrorText(error) {
   return text
 }
 
+const rangeLabel = computed(() => ranges.find((item) => item.id === range.value)?.label || '')
 const wxBalanceHint = computed(() => {
-  if (wxBalance.value.as_of) return ` · 截至 ${wxBalance.value.as_of} 资金账单`
-  if (wxBalance.value.queried_at) return ` · ${formatQueryTime(wxBalance.value.queried_at)}`
+  if (wxBalance.value.as_of) return `截至 ${wxBalance.value.as_of} 资金账单`
   return ''
 })
 
@@ -215,7 +210,6 @@ function applyWechat(wxRes) {
   }
   const wx = wxRes?.data || {}
   wxBalance.value = {
-    mchid: wx.mchid || '',
     available: wx.available ?? null,
     pending: wx.pending ?? null,
     accounts: wx.accounts || [],
@@ -246,15 +240,21 @@ async function loadDashboard() {
   }
   try {
     const allTime = { from: '1970-01-01', to: bounds.value.to }
-    const [res, seriesRes, rateRes, pendingRes] = await Promise.all([
+    const [res, seriesRes, rateRes, pendingRes, statsRes, allStatsRes] = await Promise.all([
       getDashboard(bounds.value),
       getDashboardSeries(chartBounds.value).catch(() => ({ data: null })),
       getFirstOrderRates().catch(() => ({ data: null })),
       getDashboard(allTime).catch(() => ({ data: null })),
+      getBusinessStats(bounds.value).catch(() => ({ data: null })),
+      getBusinessStats(allTime).catch(() => ({ data: null })),
     ])
     if (requestId !== loadId) return
     const period = res?.data || {}
     const pending = pendingRes?.data || period
+    commission.value = {
+      period: sumCommission(statsRes),
+      total: sumCommission(allStatsRes),
+    }
     counts.value = {
       ...period,
       cashbackOrders: period.cashbackOrders || 0,
@@ -299,13 +299,6 @@ watch(range, loadDashboard, { immediate: true })
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px; }
-.funds { margin-bottom: 16px; padding: 12px 16px 14px; }
-.funds__grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-.funds__grid span { display: block; color: #6b7280; font-size: 13px; }
-.funds__grid strong { display: block; margin-top: 4px; font-size: 22px; }
-.funds__error, .funds__hint { margin: 8px 12px; color: #6b7280; font-size: 13px; }
-.funds__error { color: #b45309; }
-.funds em { display: block; margin: 8px 12px 0; color: #9ca3af; font-style: normal; font-size: 12px; }
 .panel h3 { margin: 8px 12px 4px; font-size: 14px; }
 .panel a {
   display: flex;
@@ -321,11 +314,22 @@ watch(range, loadDashboard, { immediate: true })
 .panel span { color: #4b5563; }
 .panel strong { font-size: 20px; }
 .panel em { color: #9ca3af; font-style: normal; font-size: 12px; }
+.funds { margin-bottom: 16px; padding: 16px; }
+.funds__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.funds h3 { margin: 0 0 8px; }
+.funds strong { display: block; font-size: 28px; letter-spacing: -0.03em; }
+.funds__more { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; color: #6b7280; font-size: 13px; }
+.funds__error, .funds__hint { margin: 0; color: #6b7280; font-size: 13px; }
+.funds__error { color: #b45309; }
+.funds em { display: block; margin: 8px 0 0; color: #9ca3af; font-style: normal; font-size: 12px; }
+.funds__stat { display: block; padding: 0; text-decoration: none; color: inherit; }
+.funds__stat:hover { background: transparent; }
+.funds__stat:hover h3 { color: #2563eb; }
 @media (max-width: 1024px) {
-  .kpis, .charts, .panels, .funds__grid { grid-template-columns: 1fr 1fr; }
+  .kpis, .charts, .panels, .funds__cols { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 700px) {
   .dash__toolbar { flex-direction: column; align-items: flex-start; }
-  .kpis, .charts, .panels, .funds__grid { grid-template-columns: 1fr; }
+  .kpis, .charts, .panels, .funds__cols { grid-template-columns: 1fr; }
 }
 </style>
