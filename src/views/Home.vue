@@ -45,6 +45,27 @@
       />
     </div>
 
+    <section class="panel funds">
+      <h3>微信商户余额</h3>
+      <p v-if="wxBalance.error" class="funds__error">{{ wxBalance.error }}</p>
+      <div v-else-if="wxBalance.available !== null" class="funds__grid">
+        <div>
+          <span>可用余额</span>
+          <strong>¥{{ formatYuan(wxBalance.available) }}</strong>
+        </div>
+        <div>
+          <span>不可用</span>
+          <strong>¥{{ formatYuan(wxBalance.pending) }}</strong>
+        </div>
+        <div v-for="item in wxBalance.accounts" :key="item.type">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.available === null ? (item.closed ? '未开通' : '—') : ('¥' + formatYuan(item.available)) }}</strong>
+        </div>
+      </div>
+      <p v-else class="funds__hint">正在读取微信商户账户</p>
+      <em v-if="wxBalance.mchid">商户号 {{ wxBalance.mchid }}{{ wxBalance.queried_at ? ` · ${formatQueryTime(wxBalance.queried_at)}` : '' }}</em>
+    </section>
+
     <div class="panels">
       <section class="panel">
         <h3>待办</h3>
@@ -74,7 +95,7 @@
 import { computed, ref, watch } from 'vue'
 import TrendChart from '@/components/TrendChart.vue'
 import { useAuthStore } from '@/stores/auth.js'
-import { getDashboard, getDashboardSeries, getFirstOrderRates } from '@/api/index.js'
+import { getDashboard, getDashboardSeries, getFirstOrderRates, getWechatMerchantBalance } from '@/api/index.js'
 import { formatFirstOrderRate, firstOrderRateHint } from '@/utils/firstOrderRates.js'
 import { rangeBounds } from '@/utils/range.js'
 
@@ -104,6 +125,14 @@ const counts = ref({
   firstOrder30d: null,
   totals: { users: 0, orders: 0 },
   series: [],
+})
+const wxBalance = ref({
+  mchid: '',
+  available: null,
+  pending: null,
+  accounts: [],
+  queried_at: '',
+  error: '',
 })
 
 const bounds = computed(() => rangeBounds(range.value))
@@ -138,6 +167,33 @@ const growth = computed(() => [
   { label: '累计用户', value: counts.value.totals.users, to: '/users', spark: spark(points.value, 'users_cum') },
   { label: '累计订单', value: counts.value.totals.orders, to: '/user-orders', spark: spark(points.value, 'orders_cum') },
 ])
+function formatYuan(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatQueryTime(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+function wechatErrorText(error) {
+  const text = error?.response?.data?.message || error?.message || '读取微信商户余额失败'
+  if (String(text).includes('NO_AUTH') || String(text).includes('没有使用该接口的权限')) {
+    return '商户号已接通，但还没有余额查询权限。请在微信支付商户平台开通「产品中心 → 运营工具 → 商家转账到零钱」，或确认账户资金权限后再刷新。'
+  }
+  if (String(text).includes('未配置')) return '服务器还没有配置微信商户证书。'
+  return text
+}
+
 const todos = computed(() => [
   { label: '待处理提现', value: counts.value.pendingWithdrawals, to: '/withdrawals?pending=1' },
   { label: '待处理申诉', value: counts.value.pendingAppeals, to: '/user-appeals?pending=1' },
@@ -149,11 +205,12 @@ async function loadDashboard() {
   const requestId = ++loadId
   try {
     const allTime = { from: '1970-01-01', to: bounds.value.to }
-    const [res, seriesRes, rateRes, pendingRes] = await Promise.all([
+    const [res, seriesRes, rateRes, pendingRes, wxRes] = await Promise.all([
       getDashboard(bounds.value),
       getDashboardSeries(chartBounds.value).catch(() => ({ data: null })),
       getFirstOrderRates().catch(() => ({ data: null })),
       getDashboard(allTime).catch(() => ({ data: null })),
+      getWechatMerchantBalance().catch((error) => ({ error })),
     ])
     if (requestId !== loadId) return
     const period = res?.data || {}
@@ -167,6 +224,19 @@ async function loadDashboard() {
       firstOrder30d: rateRes.data?.days30 || period.first_order_30d || null,
       totals: seriesRes.data?.totals || { users: 0, orders: 0 },
       series: seriesRes.data?.series || [],
+    }
+    if (wxRes?.error) {
+      wxBalance.value = { ...wxBalance.value, error: wechatErrorText(wxRes.error) }
+    } else {
+      const wx = wxRes?.data || {}
+      wxBalance.value = {
+        mchid: wx.mchid || '',
+        available: wx.available ?? null,
+        pending: wx.pending ?? null,
+        accounts: wx.accounts || [],
+        queried_at: wx.queried_at || '',
+        error: wx.message ? wechatErrorText(new Error(wx.message)) : '',
+      }
     }
   } catch {
     // Keep last counts if the session cookie is still settling.
@@ -202,6 +272,13 @@ watch(range, loadDashboard, { immediate: true })
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px; }
+.funds { margin-bottom: 16px; padding: 12px 16px 14px; }
+.funds__grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.funds__grid span { display: block; color: #6b7280; font-size: 13px; }
+.funds__grid strong { display: block; margin-top: 4px; font-size: 22px; }
+.funds__error, .funds__hint { margin: 8px 12px; color: #6b7280; font-size: 13px; }
+.funds__error { color: #b45309; }
+.funds em { display: block; margin: 8px 12px 0; color: #9ca3af; font-style: normal; font-size: 12px; }
 .panel h3 { margin: 8px 12px 4px; font-size: 14px; }
 .panel a {
   display: flex;
@@ -218,10 +295,10 @@ watch(range, loadDashboard, { immediate: true })
 .panel strong { font-size: 20px; }
 .panel em { color: #9ca3af; font-style: normal; font-size: 12px; }
 @media (max-width: 1024px) {
-  .kpis, .charts, .panels { grid-template-columns: 1fr 1fr; }
+  .kpis, .charts, .panels, .funds__grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 700px) {
   .dash__toolbar { flex-direction: column; align-items: flex-start; }
-  .kpis, .charts, .panels { grid-template-columns: 1fr; }
+  .kpis, .charts, .panels, .funds__grid { grid-template-columns: 1fr; }
 }
 </style>

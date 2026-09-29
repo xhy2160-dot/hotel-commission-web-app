@@ -517,6 +517,20 @@ export const getDashboardSeries = async (query = {}) => ({
   data: buildDashboardSeries(users, orders, query),
 })
 
+export const getWechatMerchantBalance = async () => ({
+  data: {
+    mchid: '17****2712',
+    queried_at: new Date().toISOString(),
+    available: 1280.5,
+    pending: 0,
+    accounts: [
+      { type: 'BASIC', label: '基本户', available: 1280.5, pending: 0 },
+      { type: 'OPERATION', label: '运营账户', available: 320, pending: 0 },
+      { type: 'FEES', label: '手续费账户', available: 0, pending: 0 },
+    ],
+  },
+})
+
 export const getBusinessStats = async (query = {}) => {
   const from = query.from
   const to = query.to

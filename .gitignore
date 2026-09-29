@@ -37,3 +37,8 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# WeChat Pay merchant secrets
+secrets/
+*.pem
+.env.wechat*
