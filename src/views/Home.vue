@@ -322,9 +322,9 @@ watch(range, loadDashboard, { immediate: true })
 .funds__error, .funds__hint { margin: 0; color: #6b7280; font-size: 13px; }
 .funds__error { color: #b45309; }
 .funds em { display: block; margin: 8px 0 0; color: #9ca3af; font-style: normal; font-size: 12px; }
-.funds__stat { display: block; padding: 0; text-decoration: none; color: inherit; }
-.funds__stat:hover { background: transparent; }
-.funds__stat:hover h3 { color: #2563eb; }
+.panel .funds__stat { display: block; padding: 0; text-decoration: none; color: inherit; }
+.panel .funds__stat:hover { background: transparent; }
+.panel .funds__stat:hover h3 { color: #2563eb; }
 @media (max-width: 1024px) {
   .kpis, .charts, .panels, .funds__cols { grid-template-columns: 1fr 1fr; }
 }
