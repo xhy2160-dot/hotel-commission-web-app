@@ -53,17 +53,17 @@
           <span>可用余额</span>
           <strong>¥{{ formatYuan(wxBalance.available) }}</strong>
         </div>
-        <div>
+        <div v-if="wxBalance.pending !== null">
           <span>不可用</span>
           <strong>¥{{ formatYuan(wxBalance.pending) }}</strong>
         </div>
-        <div v-for="item in wxBalance.accounts" :key="item.type">
+        <div v-for="item in wxBalance.accounts.filter((row) => row.available !== null)" :key="item.type">
           <span>{{ item.label }}</span>
-          <strong>{{ item.available === null ? (item.closed ? '未开通' : '—') : ('¥' + formatYuan(item.available)) }}</strong>
+          <strong>¥{{ formatYuan(item.available) }}</strong>
         </div>
       </div>
       <p v-else class="funds__hint">正在读取微信商户账户</p>
-      <em v-if="wxBalance.mchid">商户号 {{ wxBalance.mchid }}{{ wxBalance.queried_at ? ` · ${formatQueryTime(wxBalance.queried_at)}` : '' }}</em>
+      <em v-if="wxBalance.mchid">商户号 {{ wxBalance.mchid }}{{ wxBalanceHint }}</em>
     </section>
 
     <div class="panels">
@@ -132,6 +132,8 @@ const wxBalance = ref({
   pending: null,
   accounts: [],
   queried_at: '',
+  as_of: '',
+  source: '',
   error: '',
 })
 
@@ -187,12 +189,18 @@ function formatQueryTime(value) {
 
 function wechatErrorText(error) {
   const text = error?.response?.data?.message || error?.message || '读取微信商户余额失败'
-  if (String(text).includes('NO_AUTH') || String(text).includes('没有使用该接口的权限')) {
-    return '商户号已接通，但还没有余额查询权限。请在微信支付商户平台开通「产品中心 → 运营工具 → 商家转账到零钱」，或确认账户资金权限后再刷新。'
+  if (String(text).includes('NO_AUTH') || String(text).includes('没有使用该接口的权限') || String(text).includes('没有资金账单')) {
+    return '商户号已接通。微信没有给普通商户开放实时余额接口；最近也还没有资金账单可用来估算结余。'
   }
   if (String(text).includes('未配置')) return '服务器还没有配置微信商户证书。'
   return text
 }
+
+const wxBalanceHint = computed(() => {
+  if (wxBalance.value.as_of) return ` · 截至 ${wxBalance.value.as_of} 资金账单`
+  if (wxBalance.value.queried_at) return ` · ${formatQueryTime(wxBalance.value.queried_at)}`
+  return ''
+})
 
 const todos = computed(() => [
   { label: '待处理提现', value: counts.value.pendingWithdrawals, to: '/withdrawals?pending=1' },
@@ -235,6 +243,8 @@ async function loadDashboard() {
         pending: wx.pending ?? null,
         accounts: wx.accounts || [],
         queried_at: wx.queried_at || '',
+        as_of: wx.as_of || '',
+        source: wx.source || '',
         error: wx.message ? wechatErrorText(new Error(wx.message)) : '',
       }
     }
