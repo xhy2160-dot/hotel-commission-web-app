@@ -16,7 +16,7 @@
           <div><span>离店</span><strong>{{ order.check_out_date }}</strong></div>
           <div><span>状态</span><strong>{{ statusText(order.status) }}</strong></div>
           <div><span>订单来源</span><strong>{{ order.source || '-' }}</strong></div>
-          <div><span>提交时间</span><strong>{{ order.submitted_at || '-' }}</strong></div>
+          <div><span>提交时间</span><strong>{{ submittedAt || '-' }}</strong></div>
           <div><span>当前会员</span><strong>{{ user?.vip_name || '-' }}（{{ formatRate(user?.rebate_rate) }}）</strong></div>
           <div><span>人民币应返</span><strong>¥{{ order.amount }}</strong></div>
         </div>
@@ -61,11 +61,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getOrderDetail } from '@/api/index.js'
 import { useToast } from '@/composables/useToast.js'
+import { formatRowTime } from '@/utils/formatDate.js'
 
 const route = useRoute()
 const { showToast } = useToast()
@@ -75,6 +76,7 @@ const user = ref(null)
 const appeal = ref(null)
 const statusMap = { 0: '已提交', 1: '可返现', 2: '已返现', 3: '可申诉', 4: '已提交申诉', 5: '关闭' }
 const statusText = (status) => statusMap[status] || status
+const submittedAt = computed(() => formatRowTime(order.value, ['submitted_at', 'created_at', 'createdAt', 'create_time']))
 const formatRate = (rate) => {
   if (rate === null || rate === undefined || rate === '') return '-'
   return `${Math.round(Number(rate) * 1000) / 10}%`

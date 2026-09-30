@@ -46,6 +46,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getAdminUsers } from '@/api/index.js'
 import { useToast } from '@/composables/useToast.js'
 import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
+import { formatRowTime } from '@/utils/formatDate.js'
 
 const route = useRoute()
 
@@ -85,7 +86,10 @@ const load = async () => {
       from: route.query.from,
       to: route.query.to,
     })
-    rows.value = res.data || []
+    rows.value = (res.data || []).map((row) => ({
+      ...row,
+      registered_at: formatRowTime(row, ['registered_at', 'create_time', 'created_at', 'createdAt']),
+    }))
     total.value = res.pagination?.totalItems || 0
   } catch (error) {
     showToast('获取用户失败', 'error')
@@ -109,6 +113,7 @@ const exportRows = async () => {
   })
   downloadExcel(exportFileName('用户'), columns, (res.data || []).map((row) => ({
     ...row,
+    registered_at: formatRowTime(row, ['registered_at', 'create_time', 'created_at', 'createdAt']),
     rebate_rate: formatRate(row.rebate_rate),
   })))
 }

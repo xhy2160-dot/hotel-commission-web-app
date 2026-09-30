@@ -69,7 +69,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import DataTable from "@/components/DataTable.vue"
-import { formatLocalTime, formatLocalISO } from "@/utils/formatDate.js"
+import { formatRowTime } from "@/utils/formatDate.js"
 import {getWithdrawals} from "@/api/index.js";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import WithdrawPopover from "@/components/WithdrawPopover.vue";
@@ -158,9 +158,13 @@ const filteredData = computed(() => {
   }).map((item) => {
     return {
       ...item,
-      created_at: activeTab.value === 'zelle'? formatLocalISO(item.create_time):formatLocalTime(new Date(item.created_at)),
-      updated_at:activeTab.value === 'zelle'? formatLocalISO(item.update_time):formatLocalTime(new Date(item.updated_at)),
-      paid_at: item.paid_at ? formatLocalISO(item.paid_at):'',
+      created_at: formatRowTime(item, activeTab.value === 'zelle'
+        ? ['create_time', 'created_at', 'createdAt']
+        : ['created_at', 'create_time', 'createdAt']),
+      updated_at: formatRowTime(item, activeTab.value === 'zelle'
+        ? ['update_time', 'updated_at', 'updatedAt']
+        : ['updated_at', 'update_time', 'updatedAt']),
+      paid_at: formatRowTime(item, ['paid_at', 'pay_time', 'paidAt']),
       status: activeTab.value === 'zelle'? zStatusMap[item.status]:wStatusMap[item.status],
       actionable:item.status===0
     }

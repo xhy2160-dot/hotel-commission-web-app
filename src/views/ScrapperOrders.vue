@@ -47,7 +47,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import DataTable from '@/components/DataTable.vue'
 import {getScrapperOrders, searchScraperOrders} from "@/api/index.js";
-import {formatToLocalTime} from '@/utils/formatDate.js'
+import { formatRowTime } from '@/utils/formatDate.js'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const searchKeyword = ref('')
@@ -114,7 +114,7 @@ const getStatusClass = (status) => {
 const formattedOrders = computed(()=>{
   return orderList.value.map(order=>({
         ...order,
-    createdAt:formatToLocalTime(order.createdAt)
+    createdAt: formatRowTime(order, ['createdAt', 'created_at', 'create_time'])
   }))
 
 })

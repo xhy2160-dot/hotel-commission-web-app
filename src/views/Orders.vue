@@ -56,7 +56,7 @@ import { useRoute } from 'vue-router'
 import DataTable from "@/components/DataTable.vue";
 import JSONPopover from "@/components/JSONPopover.vue"
 import {getOderByConfirm, getUserOrders,searchScraperOrders} from "@/api/index.js";
-import {formatLocalTime} from "@/utils/formatDate.js";
+import {formatRowTime} from "@/utils/formatDate.js";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import {useToast} from "@/composables/useToast.js";
 import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
@@ -111,7 +111,7 @@ const filteredOrders = computed(() => {
       })
       .map(order => ({
         ...order,
-        createdAt:formatLocalTime(order.createdAt),
+        createdAt: formatRowTime(order, ['createdAt', 'created_at', 'submitted_at', 'create_time']),
       }))
 })
 
@@ -194,7 +194,12 @@ const exportRows = async () => {
   const res = await getUserOrders(params)
   const rows = (res.data || []).map((order) => ({
     ...order,
-    status: statusMap[order.status] || order.status,
+    order_no: order.order_no || order.id || '',
+    rebate_rate: order.rebate_rate === null || order.rebate_rate === undefined || order.rebate_rate === ''
+      ? ''
+      : `${Math.round(Number(order.rebate_rate) * 1000) / 10}%`,
+    status: statusMap[String(order.status)]?.label || order.status,
+    submitted_at: formatRowTime(order, ['submitted_at', 'created_at', 'createdAt', 'create_time']),
   }))
   downloadExcel(exportFileName('订单'), exportColumns, rows)
 }

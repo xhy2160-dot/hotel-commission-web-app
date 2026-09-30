@@ -57,3 +57,28 @@ export const  formatToLocalTime = (isoString) =>{
         hour12: true // Set to false for 24-hour format
     });
 }
+
+export function pickTimeValue(row, keys = []) {
+    if (row === null || row === undefined) return null
+    if (typeof row !== 'object' || row instanceof Date) return row
+    for (const key of keys) {
+        const value = row[key]
+        if (value !== undefined && value !== null && value !== '') return value
+    }
+    return null
+}
+
+export function formatAnyTime(value) {
+    if (value === null || value === undefined || value === '') return ''
+    if (value instanceof Date) return formatLocalTime(value)
+    if (typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(String(value).trim()))) {
+        const num = Number(value)
+        if (!Number.isFinite(num) || num === 0) return ''
+        return num > 1e12 ? formatLocalTime(num) : formatLocalISO(num)
+    }
+    return formatLocalTime(value)
+}
+
+export function formatRowTime(row, keys) {
+    return formatAnyTime(pickTimeValue(row, keys))
+}

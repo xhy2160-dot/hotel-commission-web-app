@@ -112,6 +112,7 @@ import { useRoute } from 'vue-router'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getAdminUserDetail, updateAdminUser } from '@/api/index.js'
 import { useToast } from '@/composables/useToast.js'
+import { formatRowTime } from '@/utils/formatDate.js'
 
 const route = useRoute()
 const { showToast } = useToast()
@@ -148,7 +149,10 @@ const load = async () => {
   try {
     const res = await getAdminUserDetail(route.params.id)
     const data = res.data
-    user.value = data.user
+    user.value = {
+      ...data.user,
+      registered_at: formatRowTime(data.user, ['registered_at', 'create_time', 'created_at', 'createdAt']),
+    }
     vipLevels.value = data.vip_levels || []
     orders.value = data.orders || []
     rebates.value = data.rebates || []
