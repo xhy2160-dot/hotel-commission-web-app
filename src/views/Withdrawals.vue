@@ -60,7 +60,12 @@
           :total="totalItems"
           :enableAction
           @action_btn_click="handleActionClick"
-      />
+      >
+        <template #[`cell(user_id)`]="{ row }">
+          <router-link class="order-link" :to="`/users/${row.user_id}`">{{ row.user_id }}</router-link>      </template>
+          <template #[`cell(status)`]="{ row }"> <span :style="{ color: row.status.color || '#000' }" > {{ row.status.label }} </span> </template>
+
+      </DataTable>
     </div>
   </div>
 </template>
@@ -100,21 +105,22 @@ const currentTransaction = ref({})
 
 // Status mapping
 const wStatusMap = {
-  "-1":"失败",
-  "0": "已提交",
-  "1": "出款中",
-  "2": "已出款",
-  "3": "等待用户确认"
-}
+  "-1": { label: "失败", color: "#f56c6c" },          // Danger Red
+  "0":  { label: "已提交", color: "#909399" },        // Info Gray
+  "1":  { label: "出款中", color: "#e6a23c" },        // Warning Orange
+  "2":  { label: "已出款", color: "#67c23a" },        // Success Green
+  "3":  { label: "等待用户确认", color: "#409eff" }   // Primary Blue
+};
 
-const zStatusMap={
-  "0": "待审核",
-  "1": "审核通过",
-  "2": "审核拒绝",
-  "3": "打款中",
-  "4": "打款成功",
-  "5": "打款失败"
-}
+const zStatusMap = {
+  "0": { label: "待审核", color: "#e6a23c" },        // Warning Orange
+  "1": { label: "审核通过", color: "#409eff" },      // Primary Blue
+  "2": { label: "审核拒绝", color: "#f56c6c" },      // Danger Red
+  "3": { label: "打款中", color: "#e6a23c" },        // Warning Orange
+  "4": { label: "打款成功", color: "#67c23a" },      // Success Green
+  "5": { label: "打款失败", color: "#f56c6c" }       // Danger Red
+};
+
 const statusMap = ref(zStatusMap)
 // Columns dynamically change based on active tab
 const zelleColumns = ref([
