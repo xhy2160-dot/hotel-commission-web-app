@@ -103,7 +103,7 @@ const logout = async () => {
   padding: 0 20px;
   gap: 12px;
 }
-.topbar h1 { margin: 0; font-size: 16px; font-weight: 600; }
+.topbar h1 { margin: 0; font-size: 16px; font-weight: 600; font-family: inherit; }
 .menu { display: none; }
 .user { display: flex; align-items: center; gap: 10px; color: #6b7280; font-size: 13px; }
 .user button {

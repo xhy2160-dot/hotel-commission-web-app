@@ -273,7 +273,7 @@ watch(range, loadDashboard, { immediate: true })
 .dash { max-width: 1180px; margin: 0 auto; padding: 24px; }
 .dash__toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 20px; }
 .dash__hello { margin: 0 0 4px; color: #6b7280; font-size: 13px; }
-.dash__toolbar h2 { margin: 0; font-size: 22px; }
+.dash__toolbar h2 { margin: 0; font-size: 22px; font-weight: 600; }
 .ranges { display: flex; gap: 8px; flex-wrap: wrap; }
 .ranges button { border: 1px solid #d1d5db; background: #fff; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
 .ranges button.active { background: #111827; color: #fff; border-color: #111827; }
