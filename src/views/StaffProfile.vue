@@ -250,7 +250,6 @@ const statusClass = (status) => ({
   max-width: 960px;
   margin: 0 auto;
   padding: 44px 28px 72px;
-  font-family: 'Inter', system-ui, sans-serif;
 }
 
 /* ── Header ─────────────────────────────────────────────── */

@@ -216,7 +216,6 @@ const resetForm = () => {
   border-radius: 12px;
   border: 1px solid #eaedf1;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Header */

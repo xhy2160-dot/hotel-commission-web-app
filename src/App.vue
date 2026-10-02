@@ -11,7 +11,11 @@ const mockMode = import.meta.env.VITE_USE_MOCK === 'true'
 
 <style>
 html, body, #app { margin: 0; min-height: 100%; }
-body { font-family: Inter, system-ui, sans-serif; background: #f4f6f8; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #f4f6f8;
+}
+button, input, select, textarea { font-family: inherit; }
 </style>
 <style scoped>
 .mock-banner {

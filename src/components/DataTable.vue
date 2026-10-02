@@ -212,7 +212,6 @@ const handlePageClick = (direction) => {
 <style scoped>
 .data-table-wrapper {
   width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #333;
 }
 

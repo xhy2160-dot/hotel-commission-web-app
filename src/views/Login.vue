@@ -216,7 +216,6 @@ const handleSignUp = () => {
   min-height: 100vh;
   padding: 1.5rem;
   background: linear-gradient(145deg, #f6f9fc 0%, #e9f1f8 100%);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
 .login-card {

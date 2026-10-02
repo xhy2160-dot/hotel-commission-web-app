@@ -79,7 +79,6 @@
   min-height: 100vh;
   padding: 2rem;
   background: linear-gradient(135deg, #f6f9fc 0%, #e9f1f8 50%, #dfe8f2 100%);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
 .not-found-content {

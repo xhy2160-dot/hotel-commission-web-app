@@ -232,7 +232,6 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 24px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #333;
 }
 .page-header { display: flex; justify-content: space-between; align-items: center; }

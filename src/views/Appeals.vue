@@ -234,7 +234,6 @@ watch(() => [route.query.from, route.query.to, route.query.pending], () => {
   background-color: #ffffff;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .search-box {

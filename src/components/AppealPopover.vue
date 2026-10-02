@@ -182,7 +182,6 @@ const handleClose = () => {
   border-radius: 10px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 .popover-header {

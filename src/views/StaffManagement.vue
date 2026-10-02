@@ -386,7 +386,6 @@ watch([searchQuery, statusFilter], () => {
 }
 
 .staff-management {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: #f7f8fa;
   min-height: 100vh;
   color: #1a1a2e;

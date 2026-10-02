@@ -145,7 +145,6 @@ onMounted(() => {
   min-height: 100vh;
   padding: 2rem;
   background: linear-gradient(135deg, #f6f9fc 0%, #e9f1f8 100%);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .order-container {

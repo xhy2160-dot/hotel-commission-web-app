@@ -55,7 +55,13 @@ const logout = async () => {
 </script>
 
 <style scoped>
-.shell { display: flex; min-height: 100vh; background: #f4f6f8; color: #111827; }
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: #f4f6f8;
+  color: #111827;
+  font-family: inherit;
+}
 .sidebar {
   width: 232px;
   background: #111827;
