@@ -250,8 +250,16 @@ module.exports = function registerHotelGroups(router) {
             const checkOutCol = pickField(orderColumns, ['check_out_date', 'check_out', 'checkout'])
             const submittedCol = pickField(orderColumns, ['submitted_at', 'created_at', 'create_time', 'createdAt'])
             const extraTimeCol = pickField(orderColumns, ['created_at', 'create_time', 'submitted_at'])
+            const orderNoCol = pickField(orderColumns, ['order_no'])
+            const userIdCol = pickField(orderColumns, ['user_id'])
+            const confirmCol = pickField(orderColumns, ['confirmation_num'])
+            const statusCol = pickField(orderColumns, ['status'])
             const select = [
                 'id',
+                orderNoCol ? `\`${orderNoCol}\` AS order_no` : 'NULL AS order_no',
+                userIdCol ? `\`${userIdCol}\` AS user_id` : 'NULL AS user_id',
+                confirmCol ? `\`${confirmCol}\` AS confirmation_num` : 'NULL AS confirmation_num',
+                statusCol ? `\`${statusCol}\` AS status` : 'NULL AS status',
                 nameCol ? `\`${nameCol}\` AS hotel_name_cn` : 'NULL AS hotel_name_cn',
                 nameEnCol ? `\`${nameEnCol}\` AS hotel_name_en` : 'NULL AS hotel_name_en',
                 checkInCol ? `\`${checkInCol}\` AS check_in_date` : 'NULL AS check_in_date',
@@ -268,10 +276,12 @@ module.exports = function registerHotelGroups(router) {
             const from = req.query.from || ''
             const to = req.query.to || ''
             const groupId = String(req.query.group || '').trim()
+            const brandFilter = String(req.query.brand || '').trim()
             const filtered = orders.filter((order) => inRange(order, from, to))
             const classified = filtered.map((order) => ({
                 ...classifyOrder(order, hotelIndex, extraMatchers),
                 nights: roomNights(order.check_in_date, order.check_out_date),
+                order,
             }))
 
             const groupMap = new Map()
@@ -296,12 +306,29 @@ module.exports = function registerHotelGroups(router) {
             }
 
             const groups = [...groupMap.values()].filter((row) => row.id !== 'unmatched' || row.orders > 0)
+            const brandOrders = brandFilter
+                ? classified
+                    .filter((row) => (!groupId || row.groupId === groupId) && row.brandName === brandFilter)
+                    .map((row) => ({
+                        id: row.order.id,
+                        order_no: row.order.order_no || '',
+                        user_id: row.order.user_id,
+                        confirmation_num: row.order.confirmation_num || '',
+                        hotel_name_cn: hotelNameOf(row.order),
+                        check_in_date: row.order.check_in_date || '',
+                        check_out_date: row.order.check_out_date || '',
+                        nights: row.nights,
+                        status: row.order.status,
+                        submitted_at: row.order.submitted_at || row.order.created_at || '',
+                    }))
+                : []
             return res.json({
                 success: true,
                 data: {
                     groups,
                     selected: groupId ? groups.find((row) => row.id === groupId) || null : null,
                     brands: [...brandMap.values()].sort((a, b) => b.orders - a.orders || b.nights - a.nights),
+                    orders: brandOrders,
                     totals: {
                         orders: classified.length,
                         nights: classified.reduce((sum, row) => sum + row.nights, 0),

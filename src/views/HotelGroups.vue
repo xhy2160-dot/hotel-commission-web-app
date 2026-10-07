@@ -6,7 +6,7 @@
     <p class="hint">房晚 = 离店日期 − 入住日期，同一天按 1 晚。统计全部已提交的用户酒店订单。</p>
     <div class="filter-toolbar">
       <label>集团
-        <select v-model="group">
+        <select v-model="group" @change="onGroupChange">
           <option value="">全部集团</option>
           <option v-for="item in groupOptions" :key="item.id" :value="item.id">{{ item.name }}</option>
         </select>
@@ -52,9 +52,39 @@
       </div>
 
       <section class="panel">
-        <h3>{{ group ? `${currentLabel}品牌` : '各集团' }}</h3>
+        <h3>
+          <button v-if="brand" type="button" class="back-btn" @click="clearBrand">返回品牌</button>
+          {{ panelTitle }}
+        </h3>
         <div class="table-container">
-          <table>
+          <table v-if="brand">
+            <thead>
+              <tr>
+                <th>订单</th>
+                <th>确认号</th>
+                <th>酒店</th>
+                <th>入住</th>
+                <th>离店</th>
+                <th>房晚</th>
+                <th>状态</th>
+                <th>提交时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!orders.length"><td colspan="8">这个品牌在当前范围内没有订单</td></tr>
+              <tr v-for="row in orders" :key="row.id">
+                <td><router-link class="order-link" :to="`/user-orders/${row.id}`">{{ row.id }}</router-link></td>
+                <td>{{ row.confirmation_num || '-' }}</td>
+                <td>{{ row.hotel_name_cn || '-' }}</td>
+                <td>{{ dateOnly(row.check_in_date) }}</td>
+                <td>{{ dateOnly(row.check_out_date) }}</td>
+                <td>{{ row.nights }}</td>
+                <td>{{ statusText(row.status) }}</td>
+                <td>{{ formatRowTime(row, ['submitted_at', 'created_at', 'create_time']) || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <table v-else>
             <thead>
               <tr>
                 <th>{{ group ? '品牌' : '集团' }}</th>
@@ -65,7 +95,12 @@
             </thead>
             <tbody>
               <tr v-if="!tableRows.length"><td colspan="4">这个范围内没有订单</td></tr>
-              <tr v-for="row in tableRows" :key="row.key">
+              <tr
+                  v-for="row in tableRows"
+                  :key="row.key"
+                  class="row-click"
+                  @click="onRowClick(row)"
+              >
                 <td>{{ row.name }}</td>
                 <td>{{ row.orders }}</td>
                 <td>{{ row.nights }}</td>
@@ -84,15 +119,28 @@ import { computed, onMounted, ref } from 'vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getHotelGroupStats } from '@/api/index.js'
 import { HOTEL_GROUPS } from '@/utils/hotelGroups.js'
+import { formatRowTime } from '@/utils/formatDate.js'
 import { useToast } from '@/composables/useToast.js'
+
+const STATUS_TEXT = {
+  0: '已提交',
+  1: '可返现',
+  2: '已返现',
+  3: '可申诉',
+  4: '已提交申诉',
+  5: '关闭',
+  6: '已删除',
+}
 
 const { showToast } = useToast()
 const loading = ref(false)
 const group = ref('marriott')
+const brand = ref('')
 const from = ref('')
 const to = ref('')
 const groups = ref([])
 const brands = ref([])
+const orders = ref([])
 const selected = ref(null)
 const totals = ref({ orders: 0, nights: 0 })
 
@@ -107,6 +155,11 @@ const currentLabel = computed(() => {
   const row = HOTEL_GROUPS.find((item) => item.id === group.value) || selected.value
   return row ? `${row.name} ` : ''
 })
+const panelTitle = computed(() => {
+  if (brand.value) return `${brand.value} 订单`
+  if (group.value) return `${currentLabel.value}品牌`
+  return '各集团'
+})
 const tableRows = computed(() => {
   if (group.value) {
     return brands.value.map((row) => ({ key: row.brand, name: row.brand, orders: row.orders, nights: row.nights }))
@@ -119,8 +172,36 @@ const percent = (part, all) => {
   return `${Math.round((Number(part) / Number(all)) * 1000) / 10}%`
 }
 
+const dateOnly = (value) => String(value || '').slice(0, 10) || '-'
+const statusText = (status) => STATUS_TEXT[status] || STATUS_TEXT[String(status)] || status || '-'
+
 const selectGroup = (id) => {
   group.value = group.value === id ? '' : id
+  brand.value = ''
+  load()
+}
+
+const onGroupChange = () => {
+  brand.value = ''
+}
+
+const openBrand = (name) => {
+  brand.value = name
+  load()
+}
+
+const clearBrand = () => {
+  brand.value = ''
+  load()
+}
+
+const onRowClick = (row) => {
+  if (group.value) {
+    openBrand(row.name)
+    return
+  }
+  group.value = row.key
+  brand.value = ''
   load()
 }
 
@@ -129,11 +210,13 @@ const load = async () => {
   try {
     const res = await getHotelGroupStats({
       group: group.value,
+      brand: brand.value,
       from: from.value,
       to: to.value,
     })
     groups.value = res.data.groups || []
     brands.value = res.data.brands || []
+    orders.value = res.data.orders || []
     selected.value = res.data.selected
     totals.value = res.data.totals || { orders: 0, nights: 0 }
   } catch (error) {
@@ -171,10 +254,21 @@ onMounted(load)
 .chip.active { background: #111827; color: #fff; border-color: #111827; }
 .chip.active em { color: #d1d5db; }
 .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
-.panel h3 { margin: 0 0 12px; font-size: 15px; }
+.panel h3 { margin: 0 0 12px; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+.back-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
 .table-container { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+.row-click { cursor: pointer; }
+.row-click:hover { background: #f8fafc; }
+.order-link { color: #2563eb; font-weight: 600; text-decoration: none; }
 @media (max-width: 800px) {
   .summary { grid-template-columns: 1fr 1fr; }
 }

@@ -74,8 +74,24 @@ export function hotelNameOf(order) {
   return order.hotel_name_cn || order.hotel_name || order.hotel_name_en || order.property_name || ''
 }
 
+function packOrder(order, nights) {
+  return {
+    id: order.id,
+    order_no: order.order_no || '',
+    user_id: order.user_id,
+    confirmation_num: order.confirmation_num || '',
+    hotel_name_cn: hotelNameOf(order),
+    check_in_date: order.check_in_date || '',
+    check_out_date: order.check_out_date || '',
+    nights,
+    status: order.status,
+    submitted_at: order.submitted_at || order.created_at || order.createdAt || '',
+  }
+}
+
 export function buildHotelGroupStats(orders, query = {}) {
   const groupId = String(query.group || '').trim()
+  const brandFilter = String(query.brand || '').trim()
   const rows = (orders || []).map((order) => {
     const name = hotelNameOf(order)
     const classified = classifyHotel(name)
@@ -83,6 +99,7 @@ export function buildHotelGroupStats(orders, query = {}) {
       ...classified,
       brandName: canonicalBrandName(classified.groupId, classified.brandName, name),
       nights: roomNights(order.check_in_date, order.check_out_date),
+      order,
     }
   })
 
@@ -130,10 +147,17 @@ export function buildHotelGroupStats(orders, query = {}) {
     .filter((row) => !groupId || row.group_id === groupId)
     .sort((a, b) => b.orders - a.orders || b.nights - a.nights)
 
+  const brandOrders = brandFilter
+    ? rows
+      .filter((row) => (!groupId || row.groupId === groupId) && row.brandName === brandFilter)
+      .map((row) => packOrder(row.order, row.nights))
+    : []
+
   return {
     groups,
     selected,
     brands,
+    orders: brandOrders,
     totals: {
       orders: rows.length,
       nights: rows.reduce((sum, row) => sum + row.nights, 0),
