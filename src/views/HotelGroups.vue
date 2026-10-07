@@ -3,7 +3,7 @@
     <header class="page-header">
       <h2>集团订单</h2>
     </header>
-    <p class="hint">集团和品牌以线上酒店库为准（万豪、洲际、希尔顿、雅高、凯悦、温德姆）。房晚 = 离店日期 − 入住日期，同一天按 1 晚。统计全部已提交的用户酒店订单。</p>
+    <p class="hint">房晚 = 离店日期 − 入住日期，同一天按 1 晚。统计全部已提交的用户酒店订单。</p>
     <div class="filter-toolbar">
       <label>集团
         <select v-model="group">
