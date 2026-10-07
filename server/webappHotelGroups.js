@@ -46,6 +46,22 @@ function classify(name, matchers) {
     return hit
 }
 
+function canonicalBrand(groupId, brandName, extraText, matchers) {
+    if (!groupId || groupId === 'unmatched') return brandName || '未匹配'
+    const scoped = matchers.filter((row) => row.groupId === groupId)
+    const brandText = normalize(brandName)
+    if (brandText) {
+        const hit = scoped.find((row) => brandText.includes(row.keyword))
+        if (hit) return hit.brandName
+    }
+    const extra = normalize(extraText)
+    if (extra) {
+        const hit = scoped.find((row) => extra.includes(row.keyword))
+        if (hit) return hit.brandName
+    }
+    return brandName || '未匹配'
+}
+
 function roomNights(checkIn, checkOut) {
     const start = new Date(String(checkIn || '').slice(0, 10))
     const end = new Date(String(checkOut || '').slice(0, 10))
@@ -211,12 +227,18 @@ module.exports = function registerHotelGroups(router) {
     }
 
     const classifyOrder = (order, index, extraMatchers) => {
-        const hit = classifyByHotels(order, index)
-        if (hit) return hit
         const name = hotelNameOf(order)
-        const mapped = extraMatchers.length ? classify(name, extraMatchers) : null
-        if (mapped && mapped.groupId !== 'unmatched') return mapped
-        return classify(name, matchers)
+        let hit = classifyByHotels(order, index)
+        if (!hit) {
+            const mapped = extraMatchers.length ? classify(name, extraMatchers) : null
+            hit = mapped && mapped.groupId !== 'unmatched' ? mapped : classify(name, matchers)
+        }
+        return {
+            groupId: hit.groupId,
+            groupName: hit.groupName,
+            groupNameEn: hit.groupNameEn,
+            brandName: canonicalBrand(hit.groupId, hit.brandName, name, matchers),
+        }
     }
 
     router.get('/hotel-groups', async (req, res) => {

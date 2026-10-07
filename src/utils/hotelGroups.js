@@ -33,16 +33,32 @@ function buildMatchers() {
 
 const MATCHERS = buildMatchers()
 
+export function canonicalBrandName(groupId, brandName, extraText = '') {
+  if (!groupId || groupId === UNMATCHED_GROUP.id) return brandName || UNMATCHED_GROUP.name
+  const scoped = MATCHERS.filter((row) => row.groupId === groupId)
+  const brandText = normalize(brandName)
+  if (brandText) {
+    const hit = scoped.find((row) => brandText.includes(row.keyword))
+    if (hit) return hit.brandName
+  }
+  const extra = normalize(extraText)
+  if (extra) {
+    const hit = scoped.find((row) => extra.includes(row.keyword))
+    if (hit) return hit.brandName
+  }
+  return brandName || UNMATCHED_GROUP.name
+}
+
 export function classifyHotel(name) {
   const text = normalize(name)
-  if (!text) return { ...UNMATCHED_GROUP, brandName: '未匹配' }
+  if (!text) return { groupId: UNMATCHED_GROUP.id, groupName: UNMATCHED_GROUP.name, groupNameEn: UNMATCHED_GROUP.name_en, brandName: '未匹配' }
   const hit = MATCHERS.find((row) => text.includes(row.keyword))
   if (!hit) return { groupId: UNMATCHED_GROUP.id, groupName: UNMATCHED_GROUP.name, groupNameEn: UNMATCHED_GROUP.name_en, brandName: '未匹配' }
   return {
     groupId: hit.groupId,
     groupName: hit.groupName,
     groupNameEn: hit.groupNameEn,
-    brandName: hit.brandName,
+    brandName: canonicalBrandName(hit.groupId, hit.brandName, name),
   }
 }
 
@@ -61,9 +77,11 @@ export function hotelNameOf(order) {
 export function buildHotelGroupStats(orders, query = {}) {
   const groupId = String(query.group || '').trim()
   const rows = (orders || []).map((order) => {
-    const classified = classifyHotel(hotelNameOf(order))
+    const name = hotelNameOf(order)
+    const classified = classifyHotel(name)
     return {
       ...classified,
+      brandName: canonicalBrandName(classified.groupId, classified.brandName, name),
       nights: roomNights(order.check_in_date, order.check_out_date),
     }
   })
