@@ -10,6 +10,7 @@ export const navGroups = [
     items: [
       { to: '/users', title: '用户' },
       { to: '/user-orders', title: '酒店订单' },
+      { to: '/hotel-groups', title: '集团订单' },
       { to: '/scrapper-orders', title: '爬虫订单' },
     ],
   },
@@ -46,6 +47,7 @@ export function pageTitle(path) {
   if (path.startsWith('/promotions/')) return '推广详情'
   if (path.startsWith('/users/')) return '用户详情'
   if (path.startsWith('/user-orders/')) return '订单详情'
+  if (path.startsWith('/hotel-groups')) return '集团订单'
   for (const group of navGroups) {
     for (const item of group.items) {
       if (item.to === path) return item.title

@@ -296,6 +296,62 @@ orders.push(
       { source: 'ONYX', amount: '14.00', currency: 'USD', fx_rate: '0.14' },
     ], 0.08),
   },
+  {
+    id: 210,
+    order_no: 'FZ-HILTON-01',
+    user_id: 8,
+    confirmation_num: 'HILTON-210',
+    hotel_name_cn: '北京希尔顿逸林',
+    check_in_date: '2026-09-01',
+    check_out_date: '2026-09-03',
+    status: 1,
+    submitted_at: '2026-09-04 10:00:00',
+    createdAt: '2026-09-04T02:00:00.000Z',
+    source: '小程序',
+    ...commissionSnapshot([{ source: 'ONYX', amount: '20.00', currency: 'USD', fx_rate: '0.14' }], 0.05),
+  },
+  {
+    id: 211,
+    order_no: 'FZ-HYATT-01',
+    user_id: 12,
+    confirmation_num: 'HYATT-211',
+    hotel_name_cn: '北京东方君悦',
+    check_in_date: '2026-08-08',
+    check_out_date: '2026-08-10',
+    status: 2,
+    submitted_at: '2026-08-11 10:00:00',
+    createdAt: '2026-08-11T02:00:00.000Z',
+    source: '小程序',
+    ...commissionSnapshot([{ source: 'TACS', amount: '18.00', currency: 'USD', fx_rate: '0.14' }], 0.08),
+  },
+  {
+    id: 212,
+    order_no: 'FZ-IHG-01',
+    user_id: 19,
+    confirmation_num: 'IHG-212',
+    hotel_name_cn: '广州天河洲际',
+    check_in_date: '2026-07-01',
+    check_out_date: '2026-07-04',
+    status: 1,
+    submitted_at: '2026-07-05 10:00:00',
+    createdAt: '2026-07-05T02:00:00.000Z',
+    source: '小程序',
+    ...commissionSnapshot([{ source: 'ONYX', amount: '22.00', currency: 'USD', fx_rate: '0.14' }], 0.05),
+  },
+  {
+    id: 213,
+    order_no: 'FZ-ACCOR-01',
+    user_id: 31,
+    confirmation_num: 'ACCOR-213',
+    hotel_name_cn: '成都索菲特泰合',
+    check_in_date: '2026-06-10',
+    check_out_date: '2026-06-12',
+    status: 2,
+    submitted_at: '2026-06-13 10:00:00',
+    createdAt: '2026-06-13T02:00:00.000Z',
+    source: '小程序',
+    ...commissionSnapshot([{ source: 'TACS', amount: '16.00', currency: 'USD', fx_rate: '0.14' }], 0.05),
+  },
 )
 
 withdrawals.zelle.push({
@@ -722,6 +778,15 @@ export const updatePromotion = async (data) => {
     note: data.note || '',
   })
   return { data: decoratePromo(row) }
+}
+
+export const getHotelGroupStats = async (query = {}) => {
+  const { buildHotelGroupStats } = await import('@/utils/hotelGroups.js')
+  let list = orders
+  if (query.from || query.to) {
+    list = list.filter((order) => inDayRange(order.submitted_at, query.from, query.to))
+  }
+  return { data: buildHotelGroupStats(list, query) }
 }
 
 export const deletePromotion = async (data) => {

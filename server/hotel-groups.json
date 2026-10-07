@@ -1,0 +1,109 @@
+[
+  {
+    "id": "marriott",
+    "name": "万豪",
+    "name_en": "Marriott",
+    "brands": [
+      { "name": "丽思卡尔顿", "keywords": ["丽思卡尔顿", "ritz-carlton", "ritz carlton"] },
+      { "name": "瑞吉", "keywords": ["瑞吉", "st. regis", "st regis"] },
+      { "name": "W酒店", "keywords": ["w酒店", " w hotel", "w hotel"] },
+      { "name": "JW万豪", "keywords": ["jw万豪", "jw marriott"] },
+      { "name": "艾迪逊", "keywords": ["艾迪逊", "edition"] },
+      { "name": "豪华精选", "keywords": ["豪华精选", "luxury collection"] },
+      { "name": "威斯汀", "keywords": ["威斯汀", "westin"] },
+      { "name": "喜来登", "keywords": ["喜来登", "sheraton"] },
+      { "name": "福朋喜来登", "keywords": ["福朋喜来登", "福朋", "four points"] },
+      { "name": "艾美", "keywords": ["艾美", "le meridien", "le méridien"] },
+      { "name": "万丽", "keywords": ["万丽", "renaissance"] },
+      { "name": "傲途格", "keywords": ["傲途格", "autograph"] },
+      { "name": "臻品之选", "keywords": ["臻品之选", "tribute"] },
+      { "name": "万豪", "keywords": ["万豪", "marriott"] },
+      { "name": "万怡", "keywords": ["万怡", "courtyard"] },
+      { "name": "万枫", "keywords": ["万枫", "fairfield"] },
+      { "name": "雅乐轩", "keywords": ["雅乐轩", "aloft"] },
+      { "name": "源宿", "keywords": ["源宿", "element"] },
+      { "name": "AC酒店", "keywords": ["ac酒店", "ac hotel"] },
+      { "name": "Moxy", "keywords": ["moxy", "慕奇"] }
+    ]
+  },
+  {
+    "id": "ihg",
+    "name": "洲际",
+    "name_en": "IHG",
+    "brands": [
+      { "name": "洲际", "keywords": ["洲际", "intercontinental"] },
+      { "name": "皇冠假日", "keywords": ["皇冠假日", "crowne plaza"] },
+      { "name": "智选假日", "keywords": ["智选假日", "holiday inn express"] },
+      { "name": "假日酒店", "keywords": ["假日酒店", "holiday inn"] },
+      { "name": "英迪格", "keywords": ["英迪格", "indigo"] },
+      { "name": "华邑", "keywords": ["华邑", "hualuxe"] },
+      { "name": "金普顿", "keywords": ["金普顿", "kimpton"] },
+      { "name": "六善", "keywords": ["六善", "six senses"] },
+      { "name": "丽晶", "keywords": ["丽晶", "regent"] },
+      { "name": "voco", "keywords": ["voco"] }
+    ]
+  },
+  {
+    "id": "hilton",
+    "name": "希尔顿",
+    "name_en": "Hilton",
+    "brands": [
+      { "name": "华尔道夫", "keywords": ["华尔道夫", "waldorf"] },
+      { "name": "康莱德", "keywords": ["康莱德", "conrad"] },
+      { "name": "希尔顿逸林", "keywords": ["希尔顿逸林", "逸林", "doubletree", "double tree"] },
+      { "name": "希尔顿花园", "keywords": ["希尔顿花园", "hilton garden"] },
+      { "name": "希尔顿欢朋", "keywords": ["希尔顿欢朋", "欢朋", "hampton"] },
+      { "name": "希尔顿惠庭", "keywords": ["希尔顿惠庭", "惠庭", "homewood"] },
+      { "name": "Home2", "keywords": ["home2"] },
+      { "name": "嘉悦里", "keywords": ["嘉悦里", "curio"] },
+      { "name": "格芮精选", "keywords": ["格芮", "tapestry"] },
+      { "name": "坎农普", "keywords": ["坎农普", "canopy"] },
+      { "name": "LXR", "keywords": ["lxr"] },
+      { "name": "希尔顿", "keywords": ["希尔顿", "hilton"] }
+    ]
+  },
+  {
+    "id": "accor",
+    "name": "雅高",
+    "name_en": "Accor",
+    "brands": [
+      { "name": "莱佛士", "keywords": ["莱佛士", "raffles"] },
+      { "name": "费尔蒙", "keywords": ["费尔蒙", "fairmont"] },
+      { "name": "索菲特", "keywords": ["索菲特", "sofitel"] },
+      { "name": "铂尔曼", "keywords": ["铂尔曼", "pullman"] },
+      { "name": "瑞士酒店", "keywords": ["瑞士酒店", "swissotel"] },
+      { "name": "诺富特", "keywords": ["诺富特", "novotel"] },
+      { "name": "美居", "keywords": ["美居", "mercure"] },
+      { "name": "宜必思", "keywords": ["宜必思", "ibis"] },
+      { "name": "美仑", "keywords": ["美仑", "mova"] }
+    ]
+  },
+  {
+    "id": "hyatt",
+    "name": "凯悦",
+    "name_en": "Hyatt",
+    "brands": [
+      { "name": "柏悦", "keywords": ["柏悦", "park hyatt"] },
+      { "name": "君悦", "keywords": ["君悦", "grand hyatt"] },
+      { "name": "安达仕", "keywords": ["安达仕", "andaz"] },
+      { "name": "凯悦嘉轩", "keywords": ["凯悦嘉轩", "嘉轩", "hyatt place"] },
+      { "name": "凯悦嘉寓", "keywords": ["凯悦嘉寓", "嘉寓", "hyatt house"] },
+      { "name": "凯悦尚萃", "keywords": ["凯悦尚萃", "尚萃", "caption"] },
+      { "name": "凯悦", "keywords": ["凯悦", "hyatt"] }
+    ]
+  },
+  {
+    "id": "wyndham",
+    "name": "温德姆",
+    "name_en": "Wyndham",
+    "brands": [
+      { "name": "温德姆", "keywords": ["温德姆", "wyndham"] },
+      { "name": "豪生", "keywords": ["豪生", "howard johnson"] },
+      { "name": "戴斯", "keywords": ["戴斯", "days inn"] },
+      { "name": "华美达", "keywords": ["华美达", "ramada"] },
+      { "name": "超级8", "keywords": ["超级8", "super 8"] },
+      { "name": "拉昆塔", "keywords": ["拉昆塔", "la quinta"] },
+      { "name": "贝蒙特", "keywords": ["贝蒙特", "baymont"] }
+    ]
+  }
+]
