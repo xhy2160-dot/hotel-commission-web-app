@@ -7,8 +7,8 @@ const path = require('path')
 
 function loadCatalog() {
     const files = [
-        path.join(__dirname, '..', 'src', 'data', 'hotel-groups.json'),
         path.join(__dirname, 'hotel-groups.json'),
+        path.join(__dirname, '..', 'src', 'data', 'hotel-groups.json'),
         path.join(__dirname, '..', 'hotel-groups.json'),
     ]
     const file = files.find((item) => fs.existsSync(item))
