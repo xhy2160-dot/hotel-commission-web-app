@@ -3,7 +3,7 @@
     <header class="page-header">
       <h2>集团订单</h2>
     </header>
-    <p class="hint">房晚 = 离店日期 − 入住日期，同一天按 1 晚。统计全部已提交的用户酒店订单。</p>
+    <p class="hint">房晚 = 离店日期 − 入住日期，同一天按 1 晚。统计全部已提交的用户酒店订单。集团和品牌优先用客人搜酒店接口返回的信息，对不上再用酒店名关键词。</p>
     <div class="filter-toolbar">
       <label>集团
         <select v-model="group" @change="onGroupChange">
@@ -67,11 +67,12 @@
                 <th>离店</th>
                 <th>房晚</th>
                 <th>状态</th>
+                <th>分类来源</th>
                 <th>提交时间</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-if="!orders.length"><td colspan="8">这个品牌在当前范围内没有订单</td></tr>
+              <tr v-if="!orders.length"><td colspan="9">这个品牌在当前范围内没有订单</td></tr>
               <tr v-for="row in orders" :key="row.id">
                 <td><router-link class="order-link" :to="`/user-orders/${row.id}`">{{ row.id }}</router-link></td>
                 <td>{{ row.confirmation_num || '-' }}</td>
@@ -80,6 +81,7 @@
                 <td>{{ dateOnly(row.check_out_date) }}</td>
                 <td>{{ row.nights }}</td>
                 <td>{{ statusText(row.status) }}</td>
+                <td>{{ sourceText(row.source) }}</td>
                 <td>{{ formatRowTime(row, ['submitted_at', 'created_at', 'create_time']) || '-' }}</td>
               </tr>
             </tbody>
@@ -172,8 +174,16 @@ const percent = (part, all) => {
   return `${Math.round((Number(part) / Number(all)) * 1000) / 10}%`
 }
 
+const SOURCE_TEXT = {
+  search: '酒店搜索',
+  hotel_library: '酒店库',
+  keyword: '关键词',
+  unmatched: '未匹配',
+}
+
 const dateOnly = (value) => String(value || '').slice(0, 10) || '-'
 const statusText = (status) => STATUS_TEXT[status] || STATUS_TEXT[String(status)] || status || '-'
+const sourceText = (source) => SOURCE_TEXT[source] || source || '-'
 
 const selectGroup = (id) => {
   group.value = group.value === id ? '' : id

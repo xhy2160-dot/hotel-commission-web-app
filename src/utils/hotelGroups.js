@@ -91,12 +91,13 @@ export function canonicalBrandName(groupId, brandName, extraText = '') {
 
 export function classifyHotel(name) {
   const hit = bestHit(name, MATCHERS, true)
-  if (!hit) return { groupId: UNMATCHED_GROUP.id, groupName: UNMATCHED_GROUP.name, groupNameEn: UNMATCHED_GROUP.name_en, brandName: '未匹配' }
+  if (!hit) return { groupId: UNMATCHED_GROUP.id, groupName: UNMATCHED_GROUP.name, groupNameEn: UNMATCHED_GROUP.name_en, brandName: '未匹配', source: 'unmatched' }
   return {
     groupId: hit.groupId,
     groupName: hit.groupName,
     groupNameEn: hit.groupNameEn,
     brandName: canonicalBrandName(hit.groupId, hit.brandName, name),
+    source: 'keyword',
   }
 }
 
@@ -112,7 +113,7 @@ export function hotelNameOf(order) {
   return order.hotel_name_cn || order.hotel_name || order.hotel_name_en || order.property_name || ''
 }
 
-function packOrder(order, nights) {
+function packOrder(order, nights, source) {
   return {
     id: order.id,
     order_no: order.order_no || '',
@@ -123,6 +124,7 @@ function packOrder(order, nights) {
     check_out_date: order.check_out_date || '',
     nights,
     status: order.status,
+    source: source || 'keyword',
     submitted_at: order.submitted_at || order.created_at || order.createdAt || '',
   }
 }
@@ -188,7 +190,7 @@ export function buildHotelGroupStats(orders, query = {}) {
   const brandOrders = brandFilter
     ? rows
       .filter((row) => (!groupId || row.groupId === groupId) && row.brandName === brandFilter)
-      .map((row) => packOrder(row.order, row.nights))
+      .map((row) => packOrder(row.order, row.nights, row.source))
     : []
 
   return {
