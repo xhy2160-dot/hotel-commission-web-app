@@ -236,89 +236,37 @@ module.exports = function registerHotelGroups(router) {
         return { exact }
     }
 
-    const hotelService = (() => {
-        try {
-            return require('../utils/hotel_name_crawler').hotelService
-        } catch {
-            return null
-        }
-    })()
-
     const classifyByHotelsExact = (order, index) => {
         const names = [order.hotel_name_cn, order.hotel_name_en, hotelNameOf(order)]
             .map(normalize)
             .filter(Boolean)
         for (const name of names) {
-            if (index.exact.has(name)) {
-                return { ...index.exact.get(name), source: 'hotel_library' }
-            }
+            if (index.exact.has(name)) return index.exact.get(name)
         }
         return null
     }
 
-    const searchLooksUsable = (query, item) => {
-        const q = normalize(query)
-        if (!q || q.length < 8) return false
-        const words = q.split(/[^a-z0-9\u4e00-\u9fff]+/).filter((word) => word.length >= 4)
-        if (words.length < 2 && q.length < 12) return false
-        const hay = normalize([item.hotel_name_en, item.hotel_name_zh, item.displayName].filter(Boolean).join(' '))
-        return words.some((word) => hay.includes(word))
-    }
-
-    const searchOne = async (name) => {
-        if (!hotelService || !name || String(name).trim().length < 4) return null
-        try {
-            const res = await hotelService.searchHotels({ q: name, limit: 3, withDetails: true })
-            const item = res && res.results && res.results[0]
-            if (!item || !searchLooksUsable(name, item)) return null
-            const group = resolveGroup(item.group_name || item.group)
-            if (!group) return null
-            return {
-                groupId: group.id,
-                groupName: group.name,
-                groupNameEn: group.name_en,
-                brandName: item.brand_canonical || item.brand || '',
-                source: 'search',
-            }
-        } catch {
-            return null
-        }
-    }
-
-    const mapPool = async (items, concurrency, worker) => {
-        const out = new Array(items.length)
-        let next = 0
-        const run = async () => {
-            while (next < items.length) {
-                const index = next
-                next += 1
-                out[index] = await worker(items[index])
-            }
-        }
-        await Promise.all(Array.from({ length: Math.min(concurrency, items.length) || 1 }, run))
-        return out
-    }
-
-    const classifyOrder = (order, index, extraMatchers, searchHit) => {
+    const classifyOrder = (order, index, extraMatchers) => {
         const name = hotelNameOf(order)
-        let hit = classifyByHotelsExact(order, index) || searchHit || null
+        let hit = classifyByHotelsExact(order, index)
         if (!hit) {
             const mapped = extraMatchers.length ? classify(name, extraMatchers) : null
-            if (mapped && mapped.groupId !== 'unmatched') hit = { ...mapped, source: 'keyword' }
-        }
-        if (!hit) {
-            const keyed = classify(name, matchers)
-            hit = keyed.groupId !== 'unmatched'
-                ? { ...keyed, source: 'keyword' }
-                : { ...keyed, source: 'unmatched' }
+            hit = mapped && mapped.groupId !== 'unmatched' ? mapped : classify(name, matchers)
         }
         return {
             groupId: hit.groupId,
             groupName: hit.groupName,
             groupNameEn: hit.groupNameEn,
             brandName: canonicalBrand(catalog, hit.groupId, hit.brandName, name, matchers),
-            source: hit.source || 'unmatched',
         }
+    }
+
+    let hotelCache = { at: 0, index: { exact: new Map() }, extra: [] }
+    const getHotelCache = async () => {
+        if (hotelCache.at && Date.now() - hotelCache.at < 5 * 60 * 1000) return hotelCache
+        const [hotels, extra] = await Promise.all([loadHotelRows(), loadMappingMatchers()])
+        hotelCache = { at: Date.now(), index: buildHotelIndex(hotels), extra }
+        return hotelCache
     }
 
     router.get('/hotel-groups', async (req, res) => {
@@ -347,28 +295,16 @@ module.exports = function registerHotelGroups(router) {
                 submittedCol ? `\`${submittedCol}\` AS submitted_at` : 'NULL AS submitted_at',
                 extraTimeCol && extraTimeCol !== submittedCol ? `\`${extraTimeCol}\` AS created_at` : 'NULL AS created_at',
             ].join(', ')
-            const [orders, hotels, extraMatchers] = await Promise.all([
+            const [orders, cached] = await Promise.all([
                 sequelize.query(`SELECT ${select} FROM site2_user_orders`).then(([rows]) => rows),
-                loadHotelRows(),
-                loadMappingMatchers(),
+                getHotelCache(),
             ])
-            const hotelIndex = buildHotelIndex(hotels)
             const from = req.query.from || ''
             const to = req.query.to || ''
             const groupId = String(req.query.group || '').trim()
-            const brandFilter = String(req.query.brand || '').trim()
             const filtered = orders.filter((order) => inRange(order, from, to))
-            const searchHits = new Map()
-            const pendingNames = [...new Set(filtered.map(hotelNameOf).filter(Boolean))]
-                .filter((name) => !hotelIndex.exact.has(normalize(name)))
-            if (hotelService && pendingNames.length) {
-                await mapPool(pendingNames, 8, async (name) => {
-                    const hit = await searchOne(name)
-                    if (hit) searchHits.set(normalize(name), hit)
-                })
-            }
             const classified = filtered.map((order) => ({
-                ...classifyOrder(order, hotelIndex, extraMatchers, searchHits.get(normalize(hotelNameOf(order)))),
+                ...classifyOrder(order, cached.index, cached.extra),
                 nights: roomNights(order.check_in_date, order.check_out_date),
                 order,
             }))
@@ -395,23 +331,21 @@ module.exports = function registerHotelGroups(router) {
             }
 
             const groups = [...groupMap.values()].filter((row) => row.id !== 'unmatched' || row.orders > 0)
-            const brandOrders = brandFilter
-                ? classified
-                    .filter((row) => (!groupId || row.groupId === groupId) && row.brandName === brandFilter)
-                    .map((row) => ({
-                        id: row.order.id,
-                        order_no: row.order.order_no || '',
-                        user_id: row.order.user_id,
-                        confirmation_num: row.order.confirmation_num || '',
-                        hotel_name_cn: hotelNameOf(row.order),
-                        check_in_date: row.order.check_in_date || '',
-                        check_out_date: row.order.check_out_date || '',
-                        nights: row.nights,
-                        status: row.order.status,
-                        source: row.source || 'unmatched',
-                        submitted_at: row.order.submitted_at || row.order.created_at || '',
-                    }))
-                : []
+            const brandOrders = classified
+                .filter((row) => !groupId || row.groupId === groupId)
+                .map((row) => ({
+                    id: row.order.id,
+                    order_no: row.order.order_no || '',
+                    user_id: row.order.user_id,
+                    confirmation_num: row.order.confirmation_num || '',
+                    hotel_name_cn: hotelNameOf(row.order),
+                    check_in_date: row.order.check_in_date || '',
+                    check_out_date: row.order.check_out_date || '',
+                    nights: row.nights,
+                    status: row.order.status,
+                    brand: row.brandName,
+                    submitted_at: row.order.submitted_at || row.order.created_at || '',
+                }))
             return res.json({
                 success: true,
                 data: {
