@@ -8,8 +8,49 @@ export const UNMATCHED_GROUP = {
   name_en: 'Unmatched',
 }
 
+const GENERIC_KEYWORDS = new Set([
+  'marriott', '万豪',
+  'hilton', '希尔顿',
+  'hyatt', '凯悦',
+  'wyndham', '温德姆',
+  'ihg', '洲际', 'intercontinental',
+  'accor', '雅高',
+])
+
 function normalize(value) {
   return String(value || '').trim().toLowerCase()
+}
+
+function compact(value) {
+  return normalize(value).replace(/[\s.\-_'’·]/g, '')
+}
+
+function isGenericKeyword(keyword) {
+  return GENERIC_KEYWORDS.has(normalize(keyword)) || GENERIC_KEYWORDS.has(compact(keyword))
+}
+
+function textHits(text, scoped) {
+  const normal = normalize(text)
+  const packed = compact(text)
+  if (!normal) return []
+  return scoped.filter((row) => (
+    (row.keyword && normal.includes(row.keyword))
+    || (row.packed && packed.includes(row.packed))
+  ))
+}
+
+function bestHit(text, scoped, allowGeneric = true) {
+  const hits = textHits(text, scoped).filter((row) => allowGeneric || !isGenericKeyword(row.keyword))
+  hits.sort((a, b) => (b.packed.length - a.packed.length) || (b.keyword.length - a.keyword.length))
+  return hits[0] || null
+}
+
+function exactCatalogBrand(groupId, brandName) {
+  const group = HOTEL_GROUPS.find((item) => item.id === groupId)
+  if (!group || !brandName) return null
+  const normal = normalize(brandName)
+  const packed = compact(brandName)
+  return group.brands.find((brand) => normalize(brand.name) === normal || compact(brand.name) === packed) || null
 }
 
 function buildMatchers() {
@@ -23,11 +64,12 @@ function buildMatchers() {
           groupNameEn: group.name_en,
           brandName: brand.name,
           keyword: normalize(keyword),
+          packed: compact(keyword),
         })
       }
     }
   }
-  rows.sort((a, b) => b.keyword.length - a.keyword.length)
+  rows.sort((a, b) => (b.packed.length - a.packed.length) || (b.keyword.length - a.keyword.length))
   return rows
 }
 
@@ -36,23 +78,19 @@ const MATCHERS = buildMatchers()
 export function canonicalBrandName(groupId, brandName, extraText = '') {
   if (!groupId || groupId === UNMATCHED_GROUP.id) return brandName || UNMATCHED_GROUP.name
   const scoped = MATCHERS.filter((row) => row.groupId === groupId)
-  const brandText = normalize(brandName)
-  if (brandText) {
-    const hit = scoped.find((row) => brandText.includes(row.keyword))
-    if (hit) return hit.brandName
-  }
-  const extra = normalize(extraText)
-  if (extra) {
-    const hit = scoped.find((row) => extra.includes(row.keyword))
-    if (hit) return hit.brandName
-  }
-  return brandName || UNMATCHED_GROUP.name
+  const exact = exactCatalogBrand(groupId, brandName)
+  if (exact) return exact.name
+  const fromBrand = bestHit(brandName, scoped, false) || bestHit(brandName, scoped, true)
+  if (fromBrand) return fromBrand.brandName
+  const fromExtra = bestHit(extraText, scoped, false)
+  if (fromExtra) return fromExtra.brandName
+  if (brandName && !isGenericKeyword(brandName)) return brandName
+  const generic = bestHit(extraText, scoped, true)
+  return generic ? generic.brandName : (brandName || UNMATCHED_GROUP.name)
 }
 
 export function classifyHotel(name) {
-  const text = normalize(name)
-  if (!text) return { groupId: UNMATCHED_GROUP.id, groupName: UNMATCHED_GROUP.name, groupNameEn: UNMATCHED_GROUP.name_en, brandName: '未匹配' }
-  const hit = MATCHERS.find((row) => text.includes(row.keyword))
+  const hit = bestHit(name, MATCHERS, true)
   if (!hit) return { groupId: UNMATCHED_GROUP.id, groupName: UNMATCHED_GROUP.name, groupNameEn: UNMATCHED_GROUP.name_en, brandName: '未匹配' }
   return {
     groupId: hit.groupId,
