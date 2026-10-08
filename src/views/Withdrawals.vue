@@ -42,7 +42,7 @@
               :key="key"
               :value="key"
           >
-            {{ label }}
+            {{ label.label }}
           </option>
         </select>
       </div>
@@ -89,7 +89,7 @@ const loading = ref(false);
 
 
 // --- Active Tab State ---
-const activeTab = ref('zelle') // 'zelle' or 'wechat'
+const activeTab = ref('wechat') // 'zelle' or 'wechat'
 
 // --- Table State ---
 const searchQuery = ref('')

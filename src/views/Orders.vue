@@ -19,19 +19,19 @@
         <button v-if="searchQuery" @click="searchQuery = ''" class="clear-btn">✕</button>
       </div>
 
-      <!-- Status Select Dropdown -->
-<!--      <div class="status-select-wrapper">-->
-<!--        <select v-model="selectedStatus" class="status-select">-->
-<!--          <option value="All">全部状态</option>-->
-<!--          <option-->
-<!--              v-for="(label, key) in statusMap"-->
-<!--              :key="key"-->
-<!--              :value="key"-->
-<!--          >-->
-<!--            {{ label }}-->
-<!--          </option>-->
-<!--        </select>-->
-<!--      </div>-->
+       订单状态:
+      <div class="status-select-wrapper">
+        <select v-model="selectedStatus" class="status-select">
+          <option value="All">全部状态</option>
+          <option
+              v-for="(label, key) in statusMap"
+              :key="key"
+              :value="key"
+          >
+            {{ label.label }}
+          </option>
+        </select>
+      </div>
     </div>
 <LoadingSpinner v-if="loading"/>
     <!-- Data Table -->
@@ -84,7 +84,8 @@ const columns = ref([
   "status",
   "remark",
   "appeal_id",
-  "createdAt"
+  "createdAt",
+  "updatedAt"
 ])
 
 const data = ref([])
@@ -112,6 +113,7 @@ const filteredOrders = computed(() => {
       .map(order => ({
         ...order,
         createdAt: formatRowTime(order, ['createdAt', 'created_at', 'submitted_at', 'create_time']),
+        updatedAt: formatRowTime(order, ['updatedAt']),
       }))
 })
 
@@ -120,6 +122,7 @@ const fetchOrders = async () => {
   const params = new URLSearchParams({
     page: currentPage.value,
     limit,
+    status: selectedStatus.value,
   })
   if (route.query.from) params.set('from', route.query.from)
   if (route.query.to) params.set('to', route.query.to)
@@ -170,6 +173,11 @@ onMounted(() => {
   fetchOrders()
 })
 watch(() => [route.query.from, route.query.to, route.query.cashback], () => {
+  currentPage.value = 1
+  fetchOrders()
+})
+
+watch(() => selectedStatus.value, () => {
   currentPage.value = 1
   fetchOrders()
 })
