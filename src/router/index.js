@@ -20,6 +20,7 @@ const routes = [
       { path: 'promotions/:id', name: 'promotion-detail', component: () => import('@/views/PromotionDetail.vue') },
       { path: 'user-orders', name: 'user-orders', component: () => import('@/views/Orders.vue') },
       { path: 'user-orders/:id', name: 'user-order-detail', component: () => import('@/views/OrderDetail.vue') },
+      { path: 'hotel-groups', name: 'hotel-groups', component: () => import('@/views/HotelGroups.vue') },
       { path: 'users', name: 'users', component: () => import('@/views/Users.vue') },
       { path: 'users/:id', name: 'user-detail', component: () => import('@/views/UserDetail.vue') },
       { path: 'scrapper-orders', name: 'scrapper-orders', component: () => import('@/views/ScrapperOrders.vue') },

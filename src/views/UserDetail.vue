@@ -113,6 +113,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getAdminUserDetail, updateAdminUser } from '@/api/index.js'
 import { useToast } from '@/composables/useToast.js'
 import { formatRowTime } from '@/utils/formatDate.js'
+import { attachCurrentVip } from '@/utils/vipRate.js'
 
 const route = useRoute()
 const { showToast } = useToast()
@@ -149,11 +150,11 @@ const load = async () => {
   try {
     const res = await getAdminUserDetail(route.params.id)
     const data = res.data
-    user.value = {
+    vipLevels.value = data.vip_levels || []
+    user.value = attachCurrentVip({
       ...data.user,
       registered_at: formatRowTime(data.user, ['registered_at', 'create_time', 'created_at', 'createdAt']),
-    }
-    vipLevels.value = data.vip_levels || []
+    }, vipLevels.value)
     orders.value = data.orders || []
     rebates.value = data.rebates || []
     withdrawals.value = data.withdrawals || []

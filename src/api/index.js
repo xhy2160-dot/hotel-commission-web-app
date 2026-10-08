@@ -45,4 +45,6 @@ export const createPromotion = pick(mock.createPromotion, (data) => post('/promo
 export const updatePromotion = pick(mock.updatePromotion, (data) => post('/promotions/update', data))
 export const deletePromotion = pick(mock.deletePromotion, (data) => post('/promotions/delete', data))
 
+export const getHotelGroupStats = pick(mock.getHotelGroupStats, (query) => get('/hotel-groups', query))
+
 export const api = () => {}

@@ -64,9 +64,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import { getOrderDetail } from '@/api/index.js'
+import { getOrderDetail, getVipLevels } from '@/api/index.js'
 import { useToast } from '@/composables/useToast.js'
 import { formatRowTime } from '@/utils/formatDate.js'
+import { attachCurrentVip, readVipLevels } from '@/utils/vipRate.js'
 
 const route = useRoute()
 const { showToast } = useToast()
@@ -85,9 +86,12 @@ const formatRate = (rate) => {
 const load = async () => {
   loading.value = true
   try {
-    const res = await getOrderDetail(route.params.id)
+    const [res, vipRes] = await Promise.all([
+      getOrderDetail(route.params.id),
+      getVipLevels().catch(() => ({ data: [] })),
+    ])
     order.value = res.data.order
-    user.value = res.data.user
+    user.value = attachCurrentVip(res.data.user, readVipLevels(vipRes))
     appeal.value = res.data.appeal
   } catch (error) {
     showToast('获取订单详情失败', 'error')
