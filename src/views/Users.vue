@@ -43,7 +43,8 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DataTable from '@/components/DataTable.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import { getAdminUsers } from '@/api/index.js'
+import { getAdminUsers, getVipLevels } from '@/api/index.js'
+import { attachCurrentVip, readVipLevels } from '@/utils/vipRate.js'
 import { useToast } from '@/composables/useToast.js'
 import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
 import { formatRowTime } from '@/utils/formatDate.js'
@@ -79,17 +80,21 @@ const formatRate = (rate) => {
 const load = async () => {
   loading.value = true
   try {
-    const res = await getAdminUsers({
-      page: page.value,
-      limit,
-      q: keyword.value.trim(),
-      from: route.query.from,
-      to: route.query.to,
-    })
-    rows.value = (res.data || []).map((row) => ({
+    const [res, vipRes] = await Promise.all([
+      getAdminUsers({
+        page: page.value,
+        limit,
+        q: keyword.value.trim(),
+        from: route.query.from,
+        to: route.query.to,
+      }),
+      getVipLevels().catch(() => ({ data: [] })),
+    ])
+    const levels = readVipLevels(vipRes)
+    rows.value = (res.data || []).map((row) => attachCurrentVip({
       ...row,
       registered_at: formatRowTime(row, ['registered_at', 'create_time', 'created_at', 'createdAt']),
-    }))
+    }, levels))
     total.value = res.pagination?.totalItems || 0
   } catch (error) {
     showToast('获取用户失败', 'error')
@@ -104,18 +109,27 @@ const search = async () => {
 }
 
 const exportRows = async () => {
-  const res = await getAdminUsers({
-    page: 1,
-    limit: 5000,
-    q: keyword.value.trim(),
-    from: route.query.from,
-    to: route.query.to,
-  })
-  downloadExcel(exportFileName('用户'), columns, (res.data || []).map((row) => ({
-    ...row,
-    registered_at: formatRowTime(row, ['registered_at', 'create_time', 'created_at', 'createdAt']),
-    rebate_rate: formatRate(row.rebate_rate),
-  })))
+  const [res, vipRes] = await Promise.all([
+    getAdminUsers({
+      page: 1,
+      limit: 5000,
+      q: keyword.value.trim(),
+      from: route.query.from,
+      to: route.query.to,
+    }),
+    getVipLevels().catch(() => ({ data: [] })),
+  ])
+  const levels = readVipLevels(vipRes)
+  downloadExcel(exportFileName('用户'), columns, (res.data || []).map((row) => {
+    const user = attachCurrentVip({
+      ...row,
+      registered_at: formatRowTime(row, ['registered_at', 'create_time', 'created_at', 'createdAt']),
+    }, levels)
+    return {
+      ...user,
+      rebate_rate: formatRate(user.rebate_rate),
+    }
+  }))
 }
 
 onMounted(load)
