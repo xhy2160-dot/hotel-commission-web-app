@@ -32,6 +32,23 @@
         @save="fetchAppeals"
     />
 
+    <div v-if="emailOpen" class="email-overlay" @click.self="emailOpen = false">
+      <div class="email-card">
+        <div class="email-header">
+          <span>申诉邮件</span>
+          <button type="button" class="close-icon" @click="emailOpen = false">&times;</button>
+        </div>
+        <label class="email-label">主题</label>
+        <input v-model="emailDraft.subject" class="email-subject" />
+        <label class="email-label">正文</label>
+        <textarea v-model="emailDraft.body" rows="16" class="email-body" />
+        <div class="email-actions">
+          <button type="button" class="btn btn-secondary" @click="emailOpen = false">关闭</button>
+          <button type="button" class="btn btn-primary" @click="copyEmail">复制邮件</button>
+        </div>
+      </div>
+    </div>
+
     <LoadingSpinner v-if="loading" />
     <div v-else class="table-wrapper">
       <DataTable
@@ -64,6 +81,11 @@
             {{ statusLabel[row.status] || row.status }}
           </span>
         </template>
+        <template #[`cell(email)`]="{ row }">
+          <button type="button" class="mail-btn" :disabled="emailLoadingId === row.id" @click="openEmail(row)">
+            {{ emailLoadingId === row.id ? '生成中...' : '发邮件' }}
+          </button>
+        </template>
       </DataTable>
     </div>
   </div>
@@ -75,10 +97,11 @@ import { useRoute } from 'vue-router'
 import DataTable from '@/components/DataTable.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import AppealPopover from '@/components/AppealPopover.vue'
-import { getAppeals } from '@/api/index.js'
+import { getAppeals, getOrderDetail } from '@/api/index.js'
 import { inDayRange, parseTime } from '@/utils/range.js'
 import { formatLocalISO, formatLocalTime } from '@/utils/formatDate.js'
 import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
+import { buildAppealEmail } from '@/utils/appealEmail.js'
 import { useToast } from '@/composables/useToast.js'
 
 const route = useRoute()
@@ -91,6 +114,9 @@ const currentPage = ref(1)
 const limit = 10
 const isPopoverOpen = ref(false)
 const currentAppeal = ref({})
+const emailOpen = ref(false)
+const emailDraft = ref({ subject: '', body: '' })
+const emailLoadingId = ref(null)
 
 const tabList = [
   { name: '全部' },
@@ -109,7 +135,8 @@ const columns = [
   { key: 'reply_content', label: '处理回复' },
   { key: 'create_time', label: '创建时间' },
   { key: 'update_time', label: '更新时间' },
-  { key: 'staff', label: '员工' }
+  { key: 'staff', label: '员工' },
+  { key: 'email', label: '发邮件', sortable: false }
 ]
 
 const appealList = ref([])
@@ -147,7 +174,7 @@ const normalizeAppeal = (item) => {
     ...item,
     hotel_order_id: item.hotel_order_id || item.order_id || null,
     confirmation_num: item.confirmation_num || item.confirm_num || item.order_no || '',
-    amount: item.order.amount || '',
+    amount: item.order?.amount || item.amount || '',
     content: item.content || item.reason || item.description || '',
     reply_content: item.reply_content || item.reply || item.remark || '',
     create_time: formatAppealTime(item.create_time || item.created_at || item.createdAt),
@@ -190,7 +217,7 @@ const exportRows = () => {
     ...item,
     status: statusLabel[item.status] || item.status
   }))
-  downloadExcel(exportFileName('申诉'), columns, rows)
+  downloadExcel(exportFileName('申诉'), columns.filter((col) => col.key !== 'email'), rows)
 }
 
 const handleSearch = () => {
@@ -213,6 +240,37 @@ const handleTabChange = (index) => {
 const handleActionClick = (row) => {
   currentAppeal.value = row
   isPopoverOpen.value = true
+}
+
+const openEmail = async (row) => {
+  emailLoadingId.value = row.id
+  try {
+    let extras = {}
+    if (row.hotel_order_id) {
+      try {
+        const res = await getOrderDetail(row.hotel_order_id)
+        extras = { order: res.data?.order || {}, user: res.data?.user || {} }
+      } catch {
+        extras = {}
+      }
+    }
+    emailDraft.value = buildAppealEmail(row, extras)
+    emailOpen.value = true
+  } catch (error) {
+    showToast(error.message || '生成邮件失败', 'error')
+  } finally {
+    emailLoadingId.value = null
+  }
+}
+
+const copyEmail = async () => {
+  const text = `${emailDraft.value.subject}\n\n${emailDraft.value.body}`
+  try {
+    await navigator.clipboard.writeText(text)
+    showToast('邮件已复制', 'success')
+  } catch {
+    showToast('复制失败，请手动选择正文', 'error')
+  }
 }
 
 onMounted(() => {
@@ -333,5 +391,83 @@ watch(() => [route.query.from, route.query.to, route.query.pending], () => {
 .status-rejected {
   background-color: #fef0f0;
   color: #f56c6c;
+}
+
+.mail-btn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #1d4ed8;
+  white-space: nowrap;
+}
+
+.mail-btn:hover {
+  background: #eff6ff;
+}
+
+.email-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 1rem;
+}
+
+.email-card {
+  width: min(720px, 100%);
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.email-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.close-icon {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.email-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.email-subject,
+.email-body {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.email-body {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.email-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
 }
 </style>

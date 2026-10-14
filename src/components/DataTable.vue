@@ -324,6 +324,7 @@ const handlePageClick = (direction) => {
   background: #ffffff;
   border-radius: 4px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .page-btn:disabled {

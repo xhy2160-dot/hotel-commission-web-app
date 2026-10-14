@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { updateAppealStatus } from '@/api/index.js'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.js'
+import { APPEAL_REPLY_TEMPLATES } from '@/utils/appealReplyTemplates.js'
 
 const { showToast } = useToast()
 const authStore = useAuthStore()
@@ -74,6 +75,14 @@ const handleSave = async () => {
 const handleClose = () => {
   emit('close')
 }
+
+const applyReplyTemplate = (item) => {
+  if (!item.text) {
+    showToast('这条话术还没写内容', 'error')
+    return
+  }
+  remarkText.value = item.text
+}
 </script>
 
 <template>
@@ -92,11 +101,12 @@ const handleClose = () => {
           </div>
           <div class="detail-row">
             <span class="label">订单号:</span>
-            <span class="value font-mono">{{ data.order.confirmation_num || '-' }}</span>
+            <span class="value font-mono">{{ data.order?.confirmation_num || data.confirmation_num || '-' }}</span>
           </div>
           <div class="detail-row" @click="openImagePreview">
             <span class="label">截图:</span>
-            <img alt="order proof" :src="$imgBaseUrl+data.images">
+            <img v-if="data.images" alt="order proof" :src="$imgBaseUrl+data.images">
+            <span v-else class="value">-</span>
           </div>
           <div class="detail-row">
             <span class="label">当前状态:</span>
@@ -130,6 +140,19 @@ const handleClose = () => {
                 rows="3"
                 class="remark-textarea"
             />
+            <div class="reply-templates">
+              <span class="template-label">常用回复:</span>
+              <button
+                  v-for="item in APPEAL_REPLY_TEMPLATES"
+                  :key="item.id"
+                  type="button"
+                  class="template-btn"
+                  :class="{ empty: !item.text }"
+                  @click="applyReplyTemplate(item)"
+              >
+                {{ item.label }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -321,6 +344,36 @@ const handleClose = () => {
 .remark-textarea:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.reply-templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.template-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.template-btn {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #374151;
+}
+
+.template-btn:hover {
+  background: #f3f4f6;
+}
+
+.template-btn.empty {
+  color: #9ca3af;
 }
 
 .popover-footer {
