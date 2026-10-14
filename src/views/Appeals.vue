@@ -40,8 +40,13 @@
         </div>
         <label class="email-label">主题</label>
         <input v-model="emailDraft.subject" class="email-subject" />
-        <label class="email-label">正文</label>
-        <textarea v-model="emailDraft.body" rows="16" class="email-body" />
+        <label class="email-label">正文（加粗斜体下划线为需手填）</label>
+        <div
+          ref="emailBodyEl"
+          class="email-body email-body--rich"
+          contenteditable="true"
+          @input="syncEmailBody"
+        />
         <div class="email-actions">
           <button type="button" class="btn btn-secondary" @click="emailOpen = false">关闭</button>
           <button type="button" class="btn btn-primary" @click="copyEmail">复制邮件</button>
@@ -92,16 +97,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, nextTick, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DataTable from '@/components/DataTable.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import AppealPopover from '@/components/AppealPopover.vue'
-import { getAppeals, getOrderDetail } from '@/api/index.js'
+import { getAppeals, getOrderDetail, searchScraperOrders } from '@/api/index.js'
 import { inDayRange, parseTime } from '@/utils/range.js'
 import { formatLocalISO, formatLocalTime } from '@/utils/formatDate.js'
 import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
-import { buildAppealEmail } from '@/utils/appealEmail.js'
+import { buildAppealEmail, pickScraperHit } from '@/utils/appealEmail.js'
 import { useToast } from '@/composables/useToast.js'
 
 const route = useRoute()
@@ -115,7 +120,8 @@ const limit = 10
 const isPopoverOpen = ref(false)
 const currentAppeal = ref({})
 const emailOpen = ref(false)
-const emailDraft = ref({ subject: '', body: '' })
+const emailDraft = ref({ subject: '', body: '', bodyHtml: '' })
+const emailBodyEl = ref(null)
 const emailLoadingId = ref(null)
 
 const tabList = [
@@ -254,8 +260,19 @@ const openEmail = async (row) => {
         extras = {}
       }
     }
+    const confirmation = extras.order?.confirmation_num || row.confirmation_num
+    if (confirmation) {
+      try {
+        const scraped = await searchScraperOrders({ query: confirmation })
+        extras.scraper = pickScraperHit(scraped?.data, confirmation) || {}
+      } catch {
+        extras.scraper = {}
+      }
+    }
     emailDraft.value = buildAppealEmail(row, extras)
     emailOpen.value = true
+    await nextTick()
+    if (emailBodyEl.value) emailBodyEl.value.innerHTML = emailDraft.value.bodyHtml
   } catch (error) {
     showToast(error.message || '生成邮件失败', 'error')
   } finally {
@@ -263,10 +280,29 @@ const openEmail = async (row) => {
   }
 }
 
+const syncEmailBody = () => {
+  if (!emailBodyEl.value) return
+  emailDraft.value = {
+    ...emailDraft.value,
+    bodyHtml: emailBodyEl.value.innerHTML,
+    body: emailBodyEl.value.innerText.replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trimEnd(),
+  }
+}
+
 const copyEmail = async () => {
-  const text = `${emailDraft.value.subject}\n\n${emailDraft.value.body}`
+  const html = emailDraft.value.bodyHtml || emailBodyEl.value?.innerHTML || ''
+  const plain = `${emailDraft.value.subject}\n\n${emailDraft.value.body}`
   try {
-    await navigator.clipboard.writeText(text)
+    if (navigator.clipboard?.write && window.ClipboardItem) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([`<p>${emailDraft.value.subject}</p>${html}`], { type: 'text/html' }),
+          'text/plain': new Blob([plain], { type: 'text/plain' }),
+        }),
+      ])
+    } else {
+      await navigator.clipboard.writeText(plain)
+    }
     showToast('邮件已复制', 'success')
   } catch {
     showToast('复制失败，请手动选择正文', 'error')
@@ -462,6 +498,20 @@ watch(() => [route.query.from, route.query.to, route.query.pending], () => {
 .email-body {
   resize: vertical;
   line-height: 1.5;
+}
+
+.email-body--rich {
+  min-height: 280px;
+  overflow: auto;
+  background: #fff;
+}
+
+.email-body--rich:focus {
+  outline: 1px solid #409eff;
+}
+
+.email-body--rich strong {
+  font-weight: 700;
 }
 
 .email-actions {
