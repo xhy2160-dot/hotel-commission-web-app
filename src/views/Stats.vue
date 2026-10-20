@@ -4,8 +4,8 @@
       <h2>经营统计</h2>
     </header>
     <div class="filter-toolbar">
-      <label>从 <input v-model="from" type="date" /></label>
-      <label>到 <input v-model="to" type="date" /></label>
+      <label>从 <input v-model="from" type="date" lang="zh-CN" /></label>
+      <label>到 <input v-model="to" type="date" lang="zh-CN" /></label>
       <button class="search-btn" @click="load">查询</button>
     </div>
     <p class="hint">7日 / 30日首单率只统计注册已满观察期的用户；首单是该用户提交的第一笔酒店订单。累计金额是上线以来全部月份的合计，表格是当前查询区间。</p>

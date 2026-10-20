@@ -492,6 +492,13 @@ export const getUserOrders = async (params) => {
   const page = Number(query.page || 1)
   const limit = Number(query.limit || 10)
   let list = orders
+  if (query.confirmation) {
+    const keyword = String(query.confirmation).trim()
+    list = list.filter((order) => order.confirmation_num.includes(keyword))
+  }
+  if (query.status && query.status !== 'All') {
+    list = list.filter((order) => String(order.status) === String(query.status))
+  }
   if (query.cashback === '1') {
     list = list.filter((order) => [1, 2].includes(Number(order.status)))
     if (query.from || query.to) {

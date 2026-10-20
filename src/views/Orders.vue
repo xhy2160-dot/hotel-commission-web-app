@@ -2,7 +2,6 @@
   <div class="orders-page">
     <header class="page-header">
       <h2>返现订单</h2>
-      <button class="search-btn" @click="exportRows">导出</button>
     </header>
     <p v-if="route.query.cashback === '1'" class="filter-note">当前显示可返现和已返现的用户订单。</p>
 
@@ -14,12 +13,22 @@
             type="text"
             placeholder="搜索唯一确认号..."
             class="search-input"
-            @input="handleSearchOrder"
+            @keyup.enter="handleSearch"
         />
-        <button v-if="searchQuery" @click="searchQuery = ''" class="clear-btn">✕</button>
+        <button v-if="searchQuery" @click="clearSearch" class="clear-btn">✕</button>
       </div>
 
-       订单状态:
+      <div class="date-range">
+        <label class="date-field">
+          <span>从</span>
+          <input v-model="from" type="date" lang="zh-CN" class="date-input" @keyup.enter="handleSearch" />
+        </label>
+        <label class="date-field">
+          <span>到</span>
+          <input v-model="to" type="date" lang="zh-CN" class="date-input" @keyup.enter="handleSearch" />
+        </label>
+      </div>
+
       <div class="status-select-wrapper">
         <select v-model="selectedStatus" class="status-select">
           <option value="All">全部状态</option>
@@ -32,6 +41,9 @@
           </option>
         </select>
       </div>
+
+      <button class="search-btn" @click="handleSearch">查询</button>
+      <button class="search-btn ghost" @click="exportRows">导出</button>
     </div>
 <LoadingSpinner v-if="loading"/>
     <!-- Data Table -->
@@ -65,6 +77,8 @@ const route = useRoute()
 // --- State ---
 const searchQuery = ref('')
 const selectedStatus = ref('All')
+const from = ref(route.query.from ? String(route.query.from) : '')
+const to = ref(route.query.to ? String(route.query.to) : '')
 
 const currentPage = ref(1)
 const limit = 10
@@ -124,30 +138,31 @@ const fetchOrders = async () => {
     limit,
     status: selectedStatus.value,
   })
-  if (route.query.from) params.set('from', route.query.from)
-  if (route.query.to) params.set('to', route.query.to)
+  if (from.value) params.set('from', from.value)
+  if (to.value) params.set('to', to.value)
   if (route.query.cashback) params.set('cashback', route.query.cashback)
+  if (searchQuery.value.trim()) params.set('confirmation', searchQuery.value.trim())
   loading.value = true
   try {
     const res = await getUserOrders(params)
     loading.value = false
-    data.value = res.data
-    currentPage.value = res.pagination.currentPage
-    totalItems.value = res.pagination.totalItems
+    data.value = res.data || []
+    currentPage.value = res.pagination?.currentPage || 1
+    totalItems.value = res.pagination?.totalItems || 0
   } catch (error) {
     console.error("Error fetching user orders:", error)
     loading.value = false
     showToast('获取订单失败，请重试','error')
   }
 }
-const handleSearchOrder=async ()=>{
-  if(!searchQuery.value.trim()){
-    currentPage.value=1
-    await fetchOrders()
-    return
-  }
-  const res =await getOderByConfirm({confirmation:searchQuery.value})
-  data.value = res.data
+const handleSearch = async () => {
+  currentPage.value = 1
+  await fetchOrders()
+}
+const clearSearch = async () => {
+  searchQuery.value = ''
+  currentPage.value = 1
+  await fetchOrders()
 }
 
 const scraperOrders = ref(null)
@@ -172,7 +187,9 @@ const searchScraperOrder = async (confirmNo) => {
 onMounted(() => {
   fetchOrders()
 })
-watch(() => [route.query.from, route.query.to, route.query.cashback], () => {
+watch(() => [route.query.from, route.query.to, route.query.cashback], ([newFrom, newTo]) => {
+  from.value = newFrom ? String(newFrom) : ''
+  to.value = newTo ? String(newTo) : ''
   currentPage.value = 1
   fetchOrders()
 })
@@ -192,24 +209,31 @@ const exportColumns = [
   { key: 'amount', label: '人民币应返' },
   { key: 'status', label: '状态' },
   { key: 'submitted_at', label: '提交时间' },
+  { key: 'updatedAt', label: '更新时间' },
 ]
 const exportRows = async () => {
-  const params = new URLSearchParams({ page: 1, limit: 5000 })
-  if (route.query.from) params.set('from', route.query.from)
-  if (route.query.to) params.set('to', route.query.to)
-  if (route.query.cashback) params.set('cashback', route.query.cashback)
-  if (searchQuery.value.trim()) params.set('confirmation', searchQuery.value.trim())
-  const res = await getUserOrders(params)
-  const rows = (res.data || []).map((order) => ({
-    ...order,
-    order_no: order.order_no || order.id || '',
-    rebate_rate: order.rebate_rate === null || order.rebate_rate === undefined || order.rebate_rate === ''
-      ? ''
-      : `${Math.round(Number(order.rebate_rate) * 1000) / 10}%`,
-    status: statusMap[String(order.status)]?.label || order.status,
-    submitted_at: formatRowTime(order, ['submitted_at', 'created_at', 'createdAt', 'create_time']),
-  }))
-  downloadExcel(exportFileName('订单'), exportColumns, rows)
+  try {
+    const params = new URLSearchParams({ page: 1, limit: 5000 })
+    if (from.value) params.set('from', from.value)
+    if (to.value) params.set('to', to.value)
+    if (route.query.cashback) params.set('cashback', route.query.cashback)
+    if (selectedStatus.value !== 'All') params.set('status', selectedStatus.value)
+    if (searchQuery.value.trim()) params.set('confirmation', searchQuery.value.trim())
+    const res = await getUserOrders(params)
+    const rows = (res.data || []).map((order) => ({
+      ...order,
+      order_no: order.order_no || order.id || '',
+      rebate_rate: order.rebate_rate === null || order.rebate_rate === undefined || order.rebate_rate === ''
+        ? ''
+        : `${Math.round(Number(order.rebate_rate) * 1000) / 10}%`,
+      status: statusMap[String(order.status)]?.label || order.status,
+      submitted_at: formatRowTime(order, ['submitted_at', 'created_at', 'createdAt', 'create_time']),
+      updatedAt: formatRowTime(order, ['updatedAt']),
+    }))
+    downloadExcel(exportFileName('订单'), exportColumns, rows)
+  } catch (error) {
+    showToast('导出订单失败', 'error')
+  }
 }
 </script>
 
@@ -222,20 +246,14 @@ const exportRows = async () => {
 }
 
 .page-header { display: flex; justify-content: space-between; align-items: center; }
-.page-header h2 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 1.5rem;
-}
-.search-btn { padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; }
-.filter-note { color: #6b7280; font-size: 13px; }
+.page-header h2 { margin-top: 0; }
+.filter-note { color: #6b7280; font-size: 13px; margin-top: -10px; margin-bottom: 16px; }
 
 /* Toolbar & Filters */
 .filter-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  justify-content: space-between;
+  gap: 12px;
   align-items: center;
   margin-bottom: 20px;
 }
@@ -243,7 +261,7 @@ const exportRows = async () => {
 .search-box {
   position: relative;
   flex: 1;
-  min-width: 280px;
+  min-width: 220px;
 }
 
 .search-input {
@@ -272,14 +290,18 @@ const exportRows = async () => {
   color: #9ca3af;
 }
 
+.date-range { display: flex; gap: 8px; align-items: center; }
+.date-field { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #4b5563; }
+.date-input { padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; color: #111827; background: #fff; box-sizing: border-box; }
+
 /* Dropdown Select Styling */
 .status-select-wrapper {
-  min-width: 160px;
+  min-width: 140px;
 }
 
 .status-select {
   width: 100%;
-  padding: 10px 14px;
+  padding: 9px 14px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   background-color: #ffffff;
@@ -294,6 +316,9 @@ const exportRows = async () => {
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+
+.search-btn { padding: 10px 18px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; white-space: nowrap; }
+.search-btn.ghost { background: #fff; color: #111827; border: 1px solid #d1d5db; }
 
 /* Table Container */
 .table-container {

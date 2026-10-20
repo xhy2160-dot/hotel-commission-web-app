@@ -27,7 +27,7 @@
         </label>
         <label>
           开始时间
-          <input v-model="form.start_at" type="datetime-local" />
+          <input v-model="form.start_at" type="datetime-local" lang="zh-CN" />
         </label>
         <label>
           持续天数

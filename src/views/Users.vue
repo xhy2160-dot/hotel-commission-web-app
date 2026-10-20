@@ -13,6 +13,16 @@
             @keyup.enter="search"
         />
       </div>
+      <div class="date-range">
+        <label class="date-field">
+          <span>从</span>
+          <input v-model="from" type="date" lang="zh-CN" class="date-input" @keyup.enter="search" />
+        </label>
+        <label class="date-field">
+          <span>到</span>
+          <input v-model="to" type="date" lang="zh-CN" class="date-input" @keyup.enter="search" />
+        </label>
+      </div>
       <button class="search-btn" @click="search">查询</button>
       <button class="search-btn ghost" @click="exportRows">导出</button>
     </div>
@@ -53,6 +63,8 @@ const route = useRoute()
 
 const { showToast } = useToast()
 const keyword = ref('')
+const from = ref(route.query.from ? String(route.query.from) : '')
+const to = ref(route.query.to ? String(route.query.to) : '')
 const loading = ref(false)
 const rows = ref([])
 const page = ref(1)
@@ -85,8 +97,8 @@ const load = async () => {
         page: page.value,
         limit,
         q: keyword.value.trim(),
-        from: route.query.from,
-        to: route.query.to,
+        from: from.value || undefined,
+        to: to.value || undefined,
       }),
       getVipLevels().catch(() => ({ data: [] })),
     ])
@@ -109,40 +121,52 @@ const search = async () => {
 }
 
 const exportRows = async () => {
-  const [res, vipRes] = await Promise.all([
-    getAdminUsers({
-      page: 1,
-      limit: 5000,
-      q: keyword.value.trim(),
-      from: route.query.from,
-      to: route.query.to,
-    }),
-    getVipLevels().catch(() => ({ data: [] })),
-  ])
-  const levels = readVipLevels(vipRes)
-  downloadExcel(exportFileName('用户'), columns, (res.data || []).map((row) => {
-    const user = attachCurrentVip({
-      ...row,
-      registered_at: formatRowTime(row, ['registered_at', 'create_time', 'created_at', 'createdAt']),
-    }, levels)
-    return {
-      ...user,
-      rebate_rate: formatRate(user.rebate_rate),
-    }
-  }))
+  try {
+    const [res, vipRes] = await Promise.all([
+      getAdminUsers({
+        page: 1,
+        limit: 5000,
+        q: keyword.value.trim(),
+        from: from.value || undefined,
+        to: to.value || undefined,
+      }),
+      getVipLevels().catch(() => ({ data: [] })),
+    ])
+    const levels = readVipLevels(vipRes)
+    downloadExcel(exportFileName('用户'), columns, (res.data || []).map((row) => {
+      const user = attachCurrentVip({
+        ...row,
+        registered_at: formatRowTime(row, ['registered_at', 'create_time', 'created_at', 'createdAt']),
+      }, levels)
+      return {
+        ...user,
+        rebate_rate: formatRate(user.rebate_rate),
+      }
+    }))
+  } catch (error) {
+    showToast('导出用户失败', 'error')
+  }
 }
 
 onMounted(load)
-watch(() => [route.query.from, route.query.to], () => { page.value = 1; load() })
+watch(() => [route.query.from, route.query.to], ([newFrom, newTo]) => {
+  from.value = newFrom ? String(newFrom) : ''
+  to.value = newTo ? String(newTo) : ''
+  page.value = 1
+  load()
+})
 </script>
 
 <style scoped>
 .orders-page { max-width: 1500px; margin: 0 auto; padding: 24px; }
 .page-header h2 { margin-top: 0; }
-.filter-toolbar { display: flex; gap: 12px; margin-bottom: 20px; }
-.search-box { flex: 1; }
-.search-input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 6px; }
-.search-btn { padding: 10px 18px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
+.filter-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 20px; }
+.search-box { flex: 1; min-width: 220px; }
+.search-input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+.date-range { display: flex; gap: 8px; align-items: center; }
+.date-field { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #4b5563; }
+.date-input { padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; color: #111827; background: #fff; box-sizing: border-box; }
+.search-btn { padding: 10px 18px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; white-space: nowrap; }
 .search-btn.ghost { background: #fff; color: #111827; border: 1px solid #d1d5db; }
 .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; }
 .order-link { color: #2563eb; font-weight: 600; text-decoration: none; }
