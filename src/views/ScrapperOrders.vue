@@ -9,9 +9,16 @@
           class="search-input"
           @keyup.enter="handleSearch"
       />
+      <input
+          v-model="searchId"
+          type="text"
+          placeholder="搜索 ID..."
+          class="search-input id-input"
+          @keyup.enter="handleSearch"
+      />
       <button class="btn btn-primary" @click="handleSearch">查询</button>
       <button class="btn btn-secondary" type="button" @click="exportRows">导出</button>
-      <button v-if="searchKeyword" class="btn btn-secondary" @click="handleReset">重置</button>
+      <button v-if="searchKeyword || searchId" class="btn btn-secondary" @click="handleReset">重置</button>
     </div>
 
   <LoadingSpinner v-if="loading"></LoadingSpinner>
@@ -56,6 +63,7 @@ import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
 const { showToast } = useToast()
 
 const searchKeyword = ref('')
+const searchId = ref('')
 const currentTab = ref(0)
 const loading = ref(false)
 const isSearch = ref(false)
@@ -167,9 +175,9 @@ const fetchOrders = async () => {
 
 const handleSearch = async () => {
   const keyword = searchKeyword.value.trim()
+  const id = searchId.value.trim()
 
-  // Guard clause before setting loading state
-  if (!keyword) {
+  if (!keyword && !id) {
     isSearch.value = false
     searchData.value = []
     return
@@ -180,14 +188,17 @@ const handleSearch = async () => {
   searchData.value = []
 
   try {
-    // Pass the string keyword directly
-    const res = await searchScraperOrders({query:keyword})
+    const params = {}
+    if (keyword) params.query = keyword
+    if (id) params.id = id
+    const res = await searchScraperOrders(params)
 
     if (res.success) {
       searchData.value = res.data
     }
   } catch (error) {
     console.error('Error searching scraper orders:', error)
+    showToast('搜索爬虫订单失败', 'error')
   } finally {
     loading.value = false
   }
@@ -195,6 +206,7 @@ const handleSearch = async () => {
 
 const handleReset = () => {
   searchKeyword.value = ''
+  searchId.value = ''
   isSearch.value = false
 }
 
@@ -232,10 +244,15 @@ onMounted(() => fetchOrders())
 
 /* Search Area */
 .search-box {
-  width: min(720px, 100%);
+  width: min(960px, 100%);
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
+}
+
+.id-input {
+  max-width: 160px;
+  flex: 0 0 160px;
 }
 
 .search-input {
