@@ -65,7 +65,11 @@ export function emptyAllocation() {
 
 export function formatAllocation(lines, unallocated = 0) {
   const text = lines.map((line) => `${line.order_no} ¥${money(line.amount).toFixed(2)}`).join('；')
-  const nos = lines.map((line) => line.order_no).join('，')
+  const nos = lines
+    .flatMap((line) => [line.confirmation_num, line.match_order_no, line.order_no, line.order_id])
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(',')
   const gap = money(unallocated)
   return {
     lines,
@@ -119,6 +123,7 @@ export function allocateWithdrawalsFifo(orders, withdrawals) {
       lines.push({
         order_id: order.id,
         order_no: orderNo(order),
+        match_order_no: String(order.order_no || order.id || ''),
         confirmation_num: order.confirmation_num || '',
         amount: take,
         credit_at: orderCreditTime(order),

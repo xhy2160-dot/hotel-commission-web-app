@@ -297,14 +297,55 @@ const handleActionClick =(item)=>{
 }
 
 const exportRows = () => {
+  const withdrawalColumns = (activeTab.value === 'zelle' ? zelleColumns.value : wechatColumns.value)
+    .filter((column) => column.key !== 'order_alloc_text')
   const columns = [
-    ...(activeTab.value === 'zelle' ? zelleColumns.value : wechatColumns.value),
-    { key: 'order_nos', label: '关联订单号' },
+    ...withdrawalColumns,
+    { key: 'rel_confirmation_num', label: '关联确认号' },
+    { key: 'rel_order_no', label: '关联订单号' },
+    { key: 'rel_order_id', label: '关联订单ID' },
+    { key: 'rel_amount', label: '分摊金额' },
+    { key: 'rel_unmatched', label: '未匹配金额' },
   ]
+  const rows = []
+  for (const item of filteredData.value) {
+    const lines = item.order_lines || []
+    if (!lines.length) {
+      rows.push({
+        ...item,
+        rel_confirmation_num: '',
+        rel_order_no: '',
+        rel_order_id: '',
+        rel_amount: '',
+        rel_unmatched: item.order_unallocated > 0 ? Number(item.order_unallocated).toFixed(2) : '',
+      })
+      continue
+    }
+    for (const line of lines) {
+      rows.push({
+        ...item,
+        rel_confirmation_num: line.confirmation_num || line.order_no || '',
+        rel_order_no: line.match_order_no || line.order_no || '',
+        rel_order_id: line.order_id || '',
+        rel_amount: Number(line.amount).toFixed(2),
+        rel_unmatched: '',
+      })
+    }
+    if (item.order_unallocated > 0) {
+      rows.push({
+        ...item,
+        rel_confirmation_num: '',
+        rel_order_no: '',
+        rel_order_id: '',
+        rel_amount: '',
+        rel_unmatched: Number(item.order_unallocated).toFixed(2),
+      })
+    }
+  }
   downloadExcel(
     exportFileName(activeTab.value === 'zelle' ? 'Zelle提现' : '微信提现'),
     columns,
-    filteredData.value,
+    rows,
   )
 }
 
