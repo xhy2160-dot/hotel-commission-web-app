@@ -10,6 +10,7 @@
           @keyup.enter="handleSearch"
       />
       <button class="btn btn-primary" @click="handleSearch">查询</button>
+      <button class="btn btn-secondary" type="button" @click="exportRows">导出</button>
       <button v-if="searchKeyword" class="btn btn-secondary" @click="handleReset">重置</button>
     </div>
 
@@ -49,6 +50,10 @@ import DataTable from '@/components/DataTable.vue'
 import {getScrapperOrders, searchScraperOrders} from "@/api/index.js";
 import { formatRowTime } from '@/utils/formatDate.js'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import {useToast} from '@/composables/useToast.js'
+import { downloadExcel, exportFileName } from '@/utils/exportExcel.js'
+
+const { showToast } = useToast()
 
 const searchKeyword = ref('')
 const currentTab = ref(0)
@@ -118,6 +123,31 @@ const formattedOrders = computed(()=>{
   }))
 
 })
+
+const dateOnly = (value) => {
+  const raw = String(value ?? '').trim()
+  return raw ? raw.slice(0, 10) : ''
+}
+
+const exportRows = async () => {
+  try {
+    const tab = currentTab.value
+    const exportColumns = tab === 0 ? onyxColumns : tacColumns
+    const res = await getScrapperOrders({ page: 1, limit: 5000, tab })
+    const rows = (res.data || []).map((order) => ({
+      ...order,
+      arrival_date: dateOnly(order.arrival_date),
+      departure_date: dateOnly(order.departure_date),
+      arrival: dateOnly(order.arrival),
+      departure: dateOnly(order.departure),
+      createdAt: formatRowTime(order, ['createdAt', 'created_at', 'create_time']),
+    }))
+    const tabName = tabList.value[tab]?.name || '爬虫订单'
+    downloadExcel(exportFileName(`爬虫订单-${tabName}`), exportColumns, rows)
+  } catch (error) {
+    showToast('导出爬虫订单失败', 'error')
+  }
+}
 
 const fetchOrders = async () => {
   loading.value = true
@@ -202,7 +232,7 @@ onMounted(() => fetchOrders())
 
 /* Search Area */
 .search-box {
-  width: 25%;
+  width: min(720px, 100%);
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
