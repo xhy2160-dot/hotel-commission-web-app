@@ -199,11 +199,18 @@ watch(() => selectedStatus.value, () => {
   fetchOrders()
 })
 
+const dateOnly = (value) => {
+  const raw = String(value ?? '').trim()
+  return raw ? raw.slice(0, 10) : ''
+}
+
 const exportColumns = [
   { key: 'order_no', label: '订单号' },
   { key: 'confirmation_num', label: '确认号' },
   { key: 'user_id', label: '用户ID' },
   { key: 'hotel_name_cn', label: '酒店' },
+  { key: 'check_in_date', label: '入住日期' },
+  { key: 'check_out_date', label: '离店日期' },
   { key: 'commission_cny', label: '人民币佣金合计' },
   { key: 'rebate_rate', label: '当时返现比例' },
   { key: 'amount', label: '人民币应返' },
@@ -223,6 +230,8 @@ const exportRows = async () => {
     const rows = (res.data || []).map((order) => ({
       ...order,
       order_no: order.order_no || order.id || '',
+      check_in_date: dateOnly(order.check_in_date),
+      check_out_date: dateOnly(order.check_out_date),
       rebate_rate: order.rebate_rate === null || order.rebate_rate === undefined || order.rebate_rate === ''
         ? ''
         : `${Math.round(Number(order.rebate_rate) * 1000) / 10}%`,
