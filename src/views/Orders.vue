@@ -211,13 +211,47 @@ const exportColumns = [
   { key: 'hotel_name_cn', label: '酒店' },
   { key: 'check_in_date', label: '入住日期' },
   { key: 'check_out_date', label: '离店日期' },
-  { key: 'commission_cny', label: '人民币佣金合计' },
+  { key: 'orig_amount', label: '原币金额' },
+  { key: 'orig_currency', label: '原币种' },
+  { key: 'fx_rate', label: '汇率' },
+  { key: 'cny_amount', label: '人民币金额' },
   { key: 'rebate_rate', label: '当时返现比例' },
   { key: 'amount', label: '人民币应返' },
   { key: 'status', label: '状态' },
   { key: 'submitted_at', label: '提交时间' },
   { key: 'updatedAt', label: '更新时间' },
 ]
+
+const parseCalcLines = (order) => {
+  if (Array.isArray(order?.calc_lines) && order.calc_lines.length) return order.calc_lines
+  const raw = order?.calc_detail
+  if (!raw) return []
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const joinExportValues = (values, unique = false) => {
+  const texts = values
+    .map((value) => (value === null || value === undefined || value === '' ? '' : String(value)))
+    .filter(Boolean)
+  return (unique ? [...new Set(texts)] : texts).join('；')
+}
+
+const snapshotExport = (order) => {
+  const lines = parseCalcLines(order)
+  const cnyFromLines = joinExportValues(lines.map((line) => line.cny))
+  return {
+    orig_amount: joinExportValues(lines.map((line) => line.amount)),
+    orig_currency: joinExportValues(lines.map((line) => line.currency), true),
+    fx_rate: joinExportValues(lines.map((line) => line.fx_rate), true),
+    cny_amount: order.commission_cny ?? cnyFromLines,
+  }
+}
+
 const exportRows = async () => {
   try {
     const params = new URLSearchParams({ page: 1, limit: 5000 })
@@ -232,6 +266,7 @@ const exportRows = async () => {
       order_no: order.order_no || order.id || '',
       check_in_date: dateOnly(order.check_in_date),
       check_out_date: dateOnly(order.check_out_date),
+      ...snapshotExport(order),
       rebate_rate: order.rebate_rate === null || order.rebate_rate === undefined || order.rebate_rate === ''
         ? ''
         : `${Math.round(Number(order.rebate_rate) * 1000) / 10}%`,
