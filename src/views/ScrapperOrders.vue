@@ -188,13 +188,23 @@ const handleSearch = async () => {
   searchData.value = []
 
   try {
-    const params = {}
-    if (keyword) params.query = keyword
-    if (id) params.id = id
-    const res = await searchScraperOrders(params)
-
-    if (res.success) {
-      searchData.value = res.data
+    if (id && !keyword) {
+      const [onyx, tacs] = await Promise.all([
+        getScrapperOrders({ page: 1, limit: 5000, tab: 0 }),
+        getScrapperOrders({ page: 1, limit: 5000, tab: 1 }),
+      ])
+      const rows = [...(onyx.data || []), ...(tacs.data || [])]
+      searchData.value = rows.filter((row) => String(row.id ?? '') === id || String(row.tacs_id ?? '') === id)
+    } else {
+      const params = { query: keyword }
+      if (id) params.id = id
+      const res = await searchScraperOrders(params)
+      if (res.success) {
+        const rows = res.data || []
+        searchData.value = id
+          ? rows.filter((row) => String(row.id ?? '') === id || String(row.tacs_id ?? '') === id)
+          : rows
+      }
     }
   } catch (error) {
     console.error('Error searching scraper orders:', error)
