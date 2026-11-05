@@ -27,6 +27,7 @@ const routes = [
       { path: 'withdrawals', name: 'withdrawals', component: () => import('@/views/Withdrawals.vue') },
       { path: 'wechat-article', name: 'wechat-article', component: () => import('@/views/WechatArticle.vue') },
       { path: 'manual-orders', name: 'manual-orders', component: () => import('@/views/ManualOrders.vue') },
+      { path: 'user-notices', name: 'user-notices', component: () => import('@/views/UserNotices.vue') },
       { path: 'user-appeals', name: 'user-appeals', component: () => import('@/views/Appeals.vue') },
       { path: 'staff', name: 'Staff', component: () => import('@/views/StaffManagement.vue') },
     ],

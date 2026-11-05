@@ -14,6 +14,9 @@ export const updateStaffPost = pick(mock.updateStaffPost, (formData) => post('/s
 
 export const addArticlePost = pick(mock.addArticlePost, (formData) => post('/article/add', formData))
 
+export const sendUserNotice = pick(mock.sendUserNotice, (data) => post('/notices/send', data))
+export const getUserNotices = pick(mock.getUserNotices, (query) => get('/notices', query))
+
 export const getRecentManualOrders = pick(mock.getRecentManualOrders, () => get('/orders/get-recent-manual-orders'))
 export const postManualOrder = pick(mock.postManualOrder, (formData) => post('/orders/add-manual-order', formData))
 export const getUserOrders = pick(mock.getUserOrders, (params) => get('/orders/admin-list', params))
