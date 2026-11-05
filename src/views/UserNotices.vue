@@ -28,20 +28,6 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">标题 <span class="required">*</span></label>
-        <input
-            v-model="form.subject"
-            type="text"
-            maxlength="255"
-            placeholder="请输入通知标题"
-            class="form-input"
-            :class="{ 'input-error': errors.subject }"
-            @input="errors.subject = ''"
-        />
-        <p v-if="errors.subject" class="error-text">{{ errors.subject }}</p>
-      </div>
-
-      <div class="form-group">
         <label class="form-label">内容 <span class="required">*</span></label>
         <textarea
             v-model="form.content"
@@ -115,7 +101,7 @@ const TABS = [
 const COLUMNS = [
   { key: 'id', label: 'ID' },
   { key: 'user_id', label: '用户 ID' },
-  { key: 'subject', label: '标题' },
+  { key: 'nickname', label: '用户昵称' },
   { key: 'content', label: '内容', sortable: false },
   { key: 'create_time', label: '发送时间' },
   { key: 'read_time', label: '阅读时间' },
@@ -125,14 +111,13 @@ const activeTab = ref('compose')
 
 // ---- Compose ----
 const submitting = ref(false)
-const form = reactive({ user_id: '', subject: '', content: '' })
-const errors = reactive({ user_id: '', subject: '', content: '' })
+const form = reactive({ user_id: '',  content: '' })
+const errors = reactive({ user_id: '',  content: '' })
 
 function validate() {
   errors.user_id = /^\d+$/.test(form.user_id) && Number(form.user_id) > 0 ? '' : '请输入有效的用户 ID'
-  errors.subject = form.subject.trim() ? '' : '请输入通知标题'
   errors.content = form.content.trim() ? '' : '请输入通知内容'
-  return !errors.user_id && !errors.subject && !errors.content
+  return !errors.user_id && !errors.content
 }
 
 async function submitForm() {
@@ -141,7 +126,6 @@ async function submitForm() {
   try {
     await sendUserNotice({
       user_id: Number(form.user_id),
-      subject: form.subject.trim(),
       content: form.content.trim(),
     })
     showToast('通知已发送', 'success')
@@ -155,7 +139,6 @@ async function submitForm() {
 
 function resetForm() {
   form.user_id = ''
-  form.subject = ''
   form.content = ''
   Object.keys(errors).forEach((k) => (errors[k] = ''))
 }
