@@ -12,13 +12,13 @@
           :class="['tab-btn', { active: activeTab === 'zelle' }]"
           @click="handleTabChange('zelle')"
       >
-        Zelle 提现
+        支付宝
       </button>
       <button
           :class="['tab-btn', { active: activeTab === 'wechat' }]"
           @click="handleTabChange('wechat')"
       >
-        微信提现
+        微信
       </button>
     </div>
 
@@ -143,7 +143,7 @@ const zelleColumns = ref([
   { key: "withdraw_no", label: "ID" },
   { key: "user_id", label: "用户ID" },
   { key: "zelle_name", label: "姓名" },
-  { key: "zelle_phone", label: "Zelle 账号" },
+  { key: "zelle_phone", label: "账号" },
   { key: "amount", label: "提现金额 (¥)" },
   { key: "order_alloc_text", label: "关联订单" },
   { key: "status", label: "状态" },
@@ -183,6 +183,8 @@ const decorateRow = (item, type = activeTab.value) => {
   const alloc = allocationOf(item, type)
   return {
     ...item,
+    zelle_name: item.alipay_name || item.zelle_name,
+    zelle_phone:item.alipay_phone || item.zelle_phone,
     created_at: formatRowTime(item, type === 'zelle'
       ? ['create_time', 'created_at', 'createdAt']
       : ['created_at', 'create_time', 'createdAt']),
@@ -343,7 +345,7 @@ const exportRows = () => {
     }
   }
   downloadExcel(
-    exportFileName(activeTab.value === 'zelle' ? 'Zelle提现' : '微信提现'),
+    exportFileName(activeTab.value === 'zelle' ? '支付宝' : '微信'),
     columns,
     rows,
   )
