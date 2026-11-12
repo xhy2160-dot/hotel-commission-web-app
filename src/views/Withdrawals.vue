@@ -9,8 +9,8 @@
     <!-- Tab Bar for Switching Withdrawal Methods -->
     <div class="tab-bar">
       <button
-          :class="['tab-btn', { active: activeTab === 'zelle' }]"
-          @click="handleTabChange('zelle')"
+          :class="['tab-btn', { active: activeTab === 'alipay' }]"
+          @click="handleTabChange('alipay')"
       >
         支付宝
       </button>
@@ -105,7 +105,7 @@ const loading = ref(false);
 
 
 // --- Active Tab State ---
-const activeTab = ref('wechat') // 'zelle' or 'wechat'
+const activeTab = ref('wechat') // 'alipay' or 'wechat'
 
 // --- Table State ---
 const searchQuery = ref('')
@@ -128,29 +128,25 @@ const wStatusMap = {
   "3":  { label: "等待用户确认", color: "#409eff" }   // Primary Blue
 };
 
-const zStatusMap = {
-  "0": { label: "待审核", color: "#e6a23c" },        // Warning Orange
-  "1": { label: "审核通过", color: "#409eff" },      // Primary Blue
-  "2": { label: "审核拒绝", color: "#f56c6c" },      // Danger Red
-  "3": { label: "打款中", color: "#e6a23c" },        // Warning Orange
-  "4": { label: "打款成功", color: "#67c23a" },      // Success Green
-  "5": { label: "打款失败", color: "#f56c6c" }       // Danger Red
+const aStatusMap = {
+  "-1": { label: "失败", color: "#f56c6c" },          // Danger Red
+  "0":  { label: "已提交", color: "#909399" },        // Info Gray
+  "1":  { label: "出款中", color: "#e6a23c" },        // Warning Orange
+  "2":  { label: "已出款", color: "#67c23a" }         // Success Green
 };
 
 const statusMap = ref(wStatusMap)
 // Columns dynamically change based on active tab
-const zelleColumns = ref([
-  { key: "withdraw_no", label: "ID" },
+const alipayColumns = ref([
+  { key: "out_biz_no", label: "ID" },
   { key: "user_id", label: "用户ID" },
-  { key: "zelle_name", label: "姓名" },
-  { key: "zelle_phone", label: "账号" },
+  { key: "real_name", label: "姓名" },
+  { key: "payee_account", label: "账号" },
   { key: "amount", label: "提现金额 (¥)" },
   { key: "order_alloc_text", label: "关联订单" },
   { key: "status", label: "状态" },
-  { key: "pay_remark", label: "备注" },
   { key: "created_at", label: "申请时间" },
   { key: "paid_at", label: "付款时间" },
-  { key: "staff", label: "审核人" },
 ])
 
 const wechatColumns = ref([
@@ -165,15 +161,16 @@ const wechatColumns = ref([
 ])
 
 const activeColumns = computed(() => {
-  return activeTab.value === 'zelle' ? zelleColumns.value : wechatColumns.value
+  return activeTab.value === 'alipay' ? alipayColumns.value : wechatColumns.value
 })
 
 const enableAction = computed(() => {
-  return activeTab.value === 'zelle'
+  // Both tabs now list automated payouts; there is no manual review action.
+  return false
 })
 
 const allocMap = ref(new Map())
-const allByType = ref({ wechat: [], zelle: [] })
+const allByType = ref({ wechat: [], alipay: [] })
 
 const allocationOf = (item, type = activeTab.value) => {
   return allocMap.value.get(withdrawalKey(item, type)) || { lines: [], unallocated: 0, text: '', nos: '' }
@@ -183,16 +180,10 @@ const decorateRow = (item, type = activeTab.value) => {
   const alloc = allocationOf(item, type)
   return {
     ...item,
-    zelle_name: item.alipay_name || item.zelle_name,
-    zelle_phone:item.alipay_phone || item.zelle_phone,
-    created_at: formatRowTime(item, type === 'zelle'
-      ? ['create_time', 'created_at', 'createdAt']
-      : ['created_at', 'create_time', 'createdAt']),
-    updated_at: formatRowTime(item, type === 'zelle'
-      ? ['update_time', 'updated_at', 'updatedAt']
-      : ['updated_at', 'update_time', 'updatedAt']),
-    paid_at: formatRowTime(item, ['paid_at', 'pay_time', 'paidAt', 'payout_at']),
-    status: type === 'zelle' ? zStatusMap[item.status] : wStatusMap[item.status],
+    created_at: formatRowTime(item, ['created_at', 'create_time', 'createdAt']),
+    updated_at: formatRowTime(item, ['updated_at', 'update_time', 'updatedAt']),
+    paid_at: formatRowTime(item, ['payout_at', 'paid_at', 'pay_time', 'paidAt']),
+    status: type === 'alipay' ? aStatusMap[item.status] : wStatusMap[item.status],
     actionable: item.status === 0,
     order_lines: alloc.lines,
     order_unallocated: alloc.unallocated,
@@ -221,7 +212,7 @@ const filteredData = computed(() => {
 const handleTabChange = (tab) => {
   if (activeTab.value === tab) return
   activeTab.value = tab
-  statusMap.value = tab === 'zelle' ? zStatusMap : wStatusMap
+  statusMap.value = tab === 'alipay' ? aStatusMap : wStatusMap
   selectedStatus.value = 'All'
   currentPage.value = 1
   data.value = allByType.value[tab] || []
@@ -273,15 +264,15 @@ async function fetchCashbackOrders() {
 const fetchWithdrawals = async () => {
   loading.value = true
   try {
-    const [orders, wechat, zelle] = await Promise.all([
+    const [orders, wechat, alipay] = await Promise.all([
       fetchCashbackOrders().catch(() => []),
       fetchAllWithdrawals('wechat'),
-      fetchAllWithdrawals('zelle'),
+      fetchAllWithdrawals('alipay'),
     ])
-    allByType.value = { wechat, zelle }
+    allByType.value = { wechat, alipay }
     allocMap.value = allocateWithdrawalsFifo(orders, [
       ...wechat.map((item) => ({ ...item, channel: 'wechat' })),
-      ...zelle.map((item) => ({ ...item, channel: 'zelle' })),
+      ...alipay.map((item) => ({ ...item, channel: 'alipay' })),
     ])
     data.value = allByType.value[activeTab.value] || []
     totalItems.value = data.value.length
@@ -299,7 +290,7 @@ const handleActionClick =(item)=>{
 }
 
 const exportRows = () => {
-  const withdrawalColumns = (activeTab.value === 'zelle' ? zelleColumns.value : wechatColumns.value)
+  const withdrawalColumns = (activeTab.value === 'alipay' ? alipayColumns.value : wechatColumns.value)
     .filter((column) => column.key !== 'order_alloc_text')
   const columns = [
     ...withdrawalColumns,
@@ -361,7 +352,7 @@ const exportRows = () => {
     }
   }
   downloadExcel(
-    exportFileName(activeTab.value === 'zelle' ? '支付宝' : '微信'),
+    exportFileName(activeTab.value === 'alipay' ? '支付宝' : '微信'),
     columns,
     rows,
   )

@@ -12,6 +12,7 @@ export function consumesWithdrawal(item) {
   const channel = item?.channel || item?.type
   const status = Number(item?.status)
   if (channel === 'wechat') return status !== -1
+  if (channel === 'alipay') return status !== -1
   if (channel === 'zelle') return status !== 2 && status !== 5
   return status !== -1 && status !== 2 && status !== 5
 }
