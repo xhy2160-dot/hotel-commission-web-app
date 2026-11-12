@@ -82,6 +82,7 @@
 <!--        </p>-->
 <!--      </div>-->
     </div>
+    <IcpFooter class="login-icp" />
   </div>
 </template>
 
@@ -89,6 +90,7 @@
 import { ref, reactive } from 'vue'
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
+import IcpFooter from '../components/IcpFooter.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -211,6 +213,7 @@ const handleSignUp = () => {
 
 .login-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
@@ -466,6 +469,10 @@ const handleSignUp = () => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.login-icp {
+  margin-top: 1rem;
 }
 
 /* ----- Demo hint (dev only) ----- */

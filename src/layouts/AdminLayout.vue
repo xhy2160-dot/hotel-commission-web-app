@@ -30,6 +30,7 @@
       <div class="content">
         <router-view />
       </div>
+      <IcpFooter />
     </div>
     <button v-if="open" type="button" class="backdrop" @click="open = false" />
   </div>
@@ -40,6 +41,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { isNavActive, navGroups, pageTitle } from '@/nav.js'
+import IcpFooter from '@/components/IcpFooter.vue'
 
 const route = useRoute()
 const router = useRouter()
