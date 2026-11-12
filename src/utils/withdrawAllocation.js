@@ -59,6 +59,36 @@ export function toMillis(value) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+export function parseCalcLines(order) {
+  if (Array.isArray(order?.calc_lines) && order.calc_lines.length) return order.calc_lines
+  const raw = order?.calc_detail
+  if (!raw) return []
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function joinExportValues(values, unique = false) {
+  const texts = values
+    .map((value) => (value === null || value === undefined || value === '' ? '' : String(value)))
+    .filter(Boolean)
+  return (unique ? [...new Set(texts)] : texts).join('；')
+}
+
+export function orderSnapshotExport(order) {
+  const lines = parseCalcLines(order)
+  const cnyFromLines = joinExportValues(lines.map((line) => line.cny))
+  return {
+    orig_amount: joinExportValues(lines.map((line) => line.amount)),
+    orig_currency: joinExportValues(lines.map((line) => line.currency), true),
+    fx_rate: joinExportValues(lines.map((line) => line.fx_rate), true),
+    cny_amount: order?.commission_cny ?? cnyFromLines,
+  }
+}
+
 export function emptyAllocation() {
   return { lines: [], unallocated: 0, text: '', nos: '' }
 }
@@ -127,6 +157,7 @@ export function allocateWithdrawalsFifo(orders, withdrawals) {
         confirmation_num: order.confirmation_num || '',
         amount: take,
         credit_at: orderCreditTime(order),
+        ...orderSnapshotExport(order),
       })
     }
     result.set(key, formatAllocation(lines, remain))

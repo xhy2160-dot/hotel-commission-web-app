@@ -304,9 +304,19 @@ const exportRows = () => {
     { key: 'rel_confirmation_num', label: '关联确认号' },
     { key: 'rel_order_no', label: '关联订单号' },
     { key: 'rel_order_id', label: '关联订单ID' },
+    { key: 'rel_orig_amount', label: '原币金额' },
+    { key: 'rel_orig_currency', label: '原币种' },
+    { key: 'rel_fx_rate', label: '汇率' },
+    { key: 'rel_cny_amount', label: '人民币金额' },
     { key: 'rel_amount', label: '分摊金额' },
     { key: 'rel_unmatched', label: '未匹配金额' },
   ]
+  const emptySnapshot = {
+    rel_orig_amount: '',
+    rel_orig_currency: '',
+    rel_fx_rate: '',
+    rel_cny_amount: '',
+  }
   const rows = []
   for (const item of filteredData.value) {
     const lines = item.order_lines || []
@@ -316,6 +326,7 @@ const exportRows = () => {
         rel_confirmation_num: '',
         rel_order_no: '',
         rel_order_id: '',
+        ...emptySnapshot,
         rel_amount: '',
         rel_unmatched: item.order_unallocated > 0 ? Number(item.order_unallocated).toFixed(2) : '',
       })
@@ -327,6 +338,10 @@ const exportRows = () => {
         rel_confirmation_num: line.confirmation_num || line.order_no || '',
         rel_order_no: line.match_order_no || line.order_no || '',
         rel_order_id: line.order_id || '',
+        rel_orig_amount: line.orig_amount || '',
+        rel_orig_currency: line.orig_currency || '',
+        rel_fx_rate: line.fx_rate || '',
+        rel_cny_amount: line.cny_amount || '',
         rel_amount: Number(line.amount).toFixed(2),
         rel_unmatched: '',
       })
@@ -337,6 +352,7 @@ const exportRows = () => {
         rel_confirmation_num: '',
         rel_order_no: '',
         rel_order_id: '',
+        ...emptySnapshot,
         rel_amount: '',
         rel_unmatched: Number(item.order_unallocated).toFixed(2),
       })

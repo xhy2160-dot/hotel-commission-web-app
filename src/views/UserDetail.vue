@@ -42,12 +42,13 @@
       <section class="panel">
         <h3>订单</h3>
         <table>
-          <thead><tr><th>ID</th><th>确认号</th><th>酒店</th><th>状态</th><th>应返(¥)</th></tr></thead>
+          <thead><tr><th>ID</th><th>确认号</th><th>酒店</th><th>提交日期</th><th>状态</th><th>应返(¥)</th></tr></thead>
           <tbody>
           <tr v-for="order in orders" :key="order.id">
             <td><router-link :to="`/user-orders/${order.id}`">{{ order.id }}</router-link></td>
             <td>{{ order.confirmation_num }}</td>
             <td>{{ order.hotel_name_cn }}</td>
+            <td>{{ formatRowTime(order, ['submitted_at', 'created_at', 'createdAt', 'create_time']) || '-' }}</td>
             <td>{{ statusText(order.status) }}</td>
             <td>{{ order.amount }}</td>
           </tr>
