@@ -671,6 +671,22 @@ export const postManualOrder = async () => ({ data: true })
 
 export const addArticlePost = async () => ({ data: true })
 
+const userNotices = [
+  { id: 2, user_id: 2, subject: '返现到账提醒', content: '您的返现已到账，请在钱包中查看。', create_time: shiftDay(-1, 11).unix, read_time: null },
+  { id: 1, user_id: 1, subject: '欢迎使用飞筝', content: '感谢注册，如有问题请联系客服。', create_time: shiftDay(-3, 9).unix, read_time: shiftDay(-2, 20).unix },
+]
+
+export const sendUserNotice = async ({ user_id, subject, content }) => {
+  const id = (userNotices[0]?.id || 0) + 1
+  userNotices.unshift({ id, user_id: Number(user_id), subject, content, create_time: Math.floor(Date.now() / 1000), read_time: null })
+  return { success: true, data: { id } }
+}
+
+export const getUserNotices = async ({ page = 1, limit = 20 } = {}) => {
+  const start = (page - 1) * limit
+  return { success: true, data: { list: userNotices.slice(start, start + limit), total: userNotices.length, page, limit } }
+}
+
 export const addStaff = async () => ({ data: true })
 
 export const updateStaffPost = async () => ({ user: staffList[0] })

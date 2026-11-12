@@ -94,7 +94,7 @@ const handleClose = () => {
 
           <!-- QR Code Display -->
           <div class="qr-container">
-          <img alt="zell Qr code" :src="$imgBaseUrl+data.zelle_img">
+          <img alt="zell Qr code" :src="$imgBaseUrl+data.alipay_img">
             <span class="qr-hint">扫码进行审核</span>
           </div>
 

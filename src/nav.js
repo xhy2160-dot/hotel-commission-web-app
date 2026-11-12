@@ -33,6 +33,7 @@ export const navGroups = [
     items: [
       { to: '/user-appeals', title: '申诉' },
       { to: '/wechat-article', title: '公众号' },
+      { to: '/user-notices', title: '用户通知' },
     ],
   },
   {
