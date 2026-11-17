@@ -817,3 +817,32 @@ export const deletePromotion = async (data) => {
   if (index >= 0) promoCampaigns.splice(index, 1)
   return { data: { id: data.id } }
 }
+
+// --- Hyatt (Onyx) orders: mirrors Site2OnyxOrderSummary filter chain_code='HY', funding_status='FUNDED', commission_status='COMMISSION' ---
+const hyattOrders = [
+  { id: 9001, transaction_id: 'HY-TXN-9001', chain_code: 'HY', chain_name: 'Hyatt', brand_name: 'Grand Hyatt', property_name: '北京东方君悦大酒店', guest_last_name: 'ZHANG', confirmation_number: 'HY88412001', arrival_date: '2026-09-10', departure_date: '2026-09-12', nights: 2, rooms: 1, commission_amount: '128.50', commission_currency: 'USD', payment_amount: '128.50', payment_currency: 'USD', payment_date: '2026-09-20', invoice_number: 'INV-HY-001', funding_status: 'FUNDED', commission_status: 'COMMISSION', createdAt: '2026-09-20T02:00:00.000Z' },
+  { id: 9002, transaction_id: 'HY-TXN-9002', chain_code: 'HY', chain_name: 'Hyatt', brand_name: 'Park Hyatt', property_name: '上海柏悦酒店', guest_last_name: 'LI', confirmation_number: 'HY88412002', arrival_date: '2026-08-08', departure_date: '2026-08-10', nights: 2, rooms: 1, commission_amount: '210.00', commission_currency: 'USD', payment_amount: '210.00', payment_currency: 'USD', payment_date: '2026-08-18', invoice_number: 'INV-HY-002', funding_status: 'FUNDED', commission_status: 'COMMISSION', createdAt: '2026-08-18T02:00:00.000Z' },
+]
+
+export const bindHyattOrder = async (data) => {
+  const row = hyattOrders.find((item) => item.id === Number(data?.id))
+  if (!row) throw new Error('凯悦订单不存在')
+  row.bound_order_no = String(data?.customer_order_no || '').trim()
+  return { data: row }
+}
+
+export const getHyattOrders = async (params) => {
+  const query = readParams(params)
+  const page = Number(query.page || 1)
+  const limit = Number(query.limit || 10)
+  let list = [...hyattOrders]
+  const keyword = String(query.confirmation || query.q || '').trim()
+  if (keyword) list = list.filter((row) => String(row.confirmation_number || '').includes(keyword))
+  if (query.from || query.to) list = list.filter((row) => inDayRange(row.arrival_date, query.from, query.to))
+  list.sort((a, b) => b.id - a.id)
+  const start = (page - 1) * limit
+  return {
+    data: list.slice(start, start + limit),
+    pagination: { currentPage: page, totalItems: list.length, totalPages: Math.ceil(list.length / limit) || 1, pageSize: limit },
+  }
+}

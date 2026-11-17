@@ -49,5 +49,7 @@ export const updatePromotion = pick(mock.updatePromotion, (data) => post('/promo
 export const deletePromotion = pick(mock.deletePromotion, (data) => post('/promotions/delete', data))
 
 export const getHotelGroupStats = pick(mock.getHotelGroupStats, (query) => get('/hotel-groups', query))
+export const getHyattOrders = pick(mock.getHyattOrders, (params) => get('/orders/hyatt-orders', params))
+export const bindHyattOrder = pick(mock.bindHyattOrder, (data) => post('/orders/hyatt-orders/bind', data))
 
 export const api = () => {}

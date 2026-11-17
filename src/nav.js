@@ -10,6 +10,7 @@ export const navGroups = [
     items: [
       { to: '/users', title: '用户' },
       { to: '/user-orders', title: '酒店订单' },
+      { to: '/hyatt-orders', title: '凯悦订单' },
       { to: '/hotel-groups', title: '集团订单' },
       { to: '/scrapper-orders', title: '爬虫订单' },
     ],

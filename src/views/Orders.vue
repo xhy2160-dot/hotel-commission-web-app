@@ -11,7 +11,7 @@
         <input
             v-model="searchQuery"
             type="text"
-            placeholder="搜索唯一确认号..."
+            placeholder="搜索确认号 / 手动绑定号..."
             class="search-input"
             @keyup.enter="handleSearch"
         />
@@ -53,7 +53,7 @@
         <template #[`cell(user_id)`]="{ row }">
           <router-link class="order-link" :to="`/users/${row.user_id}`">{{ row.user_id }}</router-link>
         </template>
-        <template #[`cell(confirmation_num)`]="{ row }"><div @click="searchScraperOrder(row.confirmation_num)"><span :style="{ color: '#0000FF', cursor:'pointer',textDecoration: 'underline' }">{{ row.confirmation_num }}</span></div>
+        <template #[`cell(confirmation_num)`]="{ row }"><div @click="searchScraperOrder(row.confirmation_num)"><span :style="{ color: '#0000FF', cursor:'pointer',textDecoration: 'underline' }">{{ row.confirmation_num }}</span></div><div v-if="row.manual_bind" @click="searchScraperOrder(row.manual_bind)" class="manual-bind" :style="{ color: '#0000FF', cursor:'pointer',textDecoration: 'underline' }">手动绑定：{{ row.manual_bind }}</div>
         </template>
         <template #[`cell(status)`]="{ row }"> <span :style="{ color: statusMap[String(row.status)]?.color || '#000' }" > {{ statusMap[String(row.status)]?.label || '未知' }} </span> </template>
       </DataTable>
@@ -335,6 +335,13 @@ const exportRows = async () => {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.manual-bind {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 2px;
+  word-break: break-all;
 }
 
 .order-link {
